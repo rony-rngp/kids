@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.kidsmonitor.app-mergeDebugResources-35:/values-h720dp-v13/values-h720dp-v13.xml",
+            "map": [
+                {
+                    "source": "/home/rony/.gradle/caches/transforms-3/f8b57e1caf3e18b61e222da1682d0833/transformed/appcompat-1.6.1/res/values-h720dp-v13/values-h720dp-v13.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "66",
+                        "endOffsets": "117"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.kidsmonitor.app-merged_res-37:/layout_activity_main.xml.flat",
+        "source": "com.kidsmonitor.app-main-39:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.kidsmonitor.app-merged_res-37:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.kidsmonitor.app-main-39:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.kidsmonitor.app-merged_res-37:/xml_device_admin_receiver.xml.flat",
+        "source": "com.kidsmonitor.app-main-39:/xml/device_admin_receiver.xml"
+    },
+    {
+        "merged": "com.kidsmonitor.app-merged_res-37:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.kidsmonitor.app-main-39:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.kidsmonitor.app-merged_res-37:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.kidsmonitor.app-main-39:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    }
+]

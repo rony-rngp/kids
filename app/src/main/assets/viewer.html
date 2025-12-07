@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kids Monitor Viewer</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background-color: #f0f0f0; margin: 0; padding: 20px; }
+        #video-container {
+            display: inline-block;
+            position: relative;
+            background-color: #000;
+            border: 2px solid #333;
+            margin-top: 20px;
+            max-width: 90%;
+        }
+        #video {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        #status {
+            margin-top: 10px;
+            font-size: 1.2em;
+            color: #555;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 200px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Kids Monitor Viewer</h1>
+    <div class="controls">
+        <input type="text" id="ip" placeholder="Enter Child Device IP">
+        <button id="connectBtn">Connect</button>
+    </div>
+    <div id="video-container">
+        <img id="video" src="" alt="Video stream will appear here">
+    </div>
+    <div id="status">Disconnected</div>
+
+    <script>
+        const ipInput = document.getElementById('ip');
+        const connectBtn = document.getElementById('connectBtn');
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+
+        let audioSocket;
+        let audioContext;
+        let nextAudioTime = 0;
+
+        connectBtn.addEventListener('click', () => {
+            const ip = ipInput.value.trim();
+            if (!ip) {
+                alert('Please enter an IP address.');
+                return;
+            }
+            connect(ip);
+        });
+
+        function connect(ip) {
+            disconnect(); 
+
+            // --- Video MJPEG Stream ---
+            video.src = `http://${ip}:8081`;
+            video.onload = () => {
+                console.log('MJPEG stream started.');
+                updateStatus(true); // Video is considered 'connected'
+            };
+            video.onerror = () => {
+                console.error('MJPEG stream error.');
+                video.src = ""; // Clear src on error
+                updateStatus(false);
+            };
+
+
+            // --- Audio WebSocket ---
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                nextAudioTime = audioContext.currentTime;
+            } catch (e) {
+                console.error("Web Audio API is not supported in this browser.", e);
+                statusDiv.textContent = 'Web Audio API not supported.';
+                return;
+            }
+
+
+            audioSocket = new WebSocket(`ws://${ip}:8082`);
+            audioSocket.binaryType = 'arraybuffer';
+            audioSocket.onopen = () => {
+                console.log('Audio WebSocket connected.');
+                updateStatus(video.src !== "");
+            };
+            audioSocket.onmessage = (event) => {
+                const rawData = new Int16Array(event.data);
+                const floatData = new Float32Array(rawData.length);
+                for (let i = 0; i < rawData.length; i++) {
+                    floatData[i] = rawData[i] / 32768.0;
+                }
+                
+                const audioBuffer = audioContext.createBuffer(1, floatData.length, 16000);
+                audioBuffer.copyToChannel(floatData, 0);
+                
+                playBuffer(audioBuffer);
+            };
+            audioSocket.onclose = () => {
+                console.log('Audio WebSocket disconnected.');
+                updateStatus(video.src !== "");
+            };
+            audioSocket.onerror = (error) => {
+                console.error('Audio WebSocket error:', error);
+                updateStatus(video.src !== "");
+            };
+        }
+        
+        function playBuffer(buffer) {
+            if (!audioContext || audioContext.state === 'closed') return;
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            
+            const currentTime = audioContext.currentTime;
+            if (currentTime < nextAudioTime) {
+                source.start(nextAudioTime);
+                nextAudioTime += buffer.duration;
+            } else {
+                source.start();
+                nextAudioTime = currentTime + buffer.duration;
+            }
+        }
+
+        function updateStatus(isVideoConnected) {
+            const audioState = audioSocket ? audioSocket.readyState : 0; // 1 = OPEN
+            
+            if (isVideoConnected && audioState === 1) {
+                statusDiv.textContent = 'Connected (Video + Audio)';
+                statusDiv.style.color = 'green';
+            } else if (isVideoConnected) {
+                statusDiv.textContent = 'Connected (Video Only)';
+                statusDiv.style.color = 'orange';
+            } else if (audioState === 1) {
+                statusDiv.textContent = 'Connected (Audio Only)';
+                statusDiv.style.color = 'orange';
+            } else {
+                statusDiv.textContent = 'Disconnected';
+                statusDiv.style.color = 'red';
+            }
+        }
+        
+        function disconnect() {
+            video.src = "";
+            video.onload = null;
+            video.onerror = null;
+
+            if (audioSocket) {
+                audioSocket.onclose = null;
+                audioSocket.close();
+            }
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+            }
+            updateStatus(false);
+        }
+
+        window.addEventListener('beforeunload', disconnect);
+
+    </script>
+</body>
+</html>
