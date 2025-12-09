@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
+import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -54,6 +55,7 @@ class CameraStreamer(
         val cameraSelector = CameraSelector.Builder().requireLensFacing(currentFacing).build()
 
         imageAnalysis = ImageAnalysis.Builder()
+            .setTargetResolution(Size(1280, 720))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
@@ -87,7 +89,7 @@ class CameraStreamer(
         val nv21 = yuv420888ToNv21(image)
         val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
         val out = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 80, out)
+        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 95, out)
         return out.toByteArray()
     }
 
