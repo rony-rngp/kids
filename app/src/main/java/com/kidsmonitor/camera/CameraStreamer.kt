@@ -25,6 +25,12 @@ class CameraStreamer(
     private var imageAnalysis: ImageAnalysis? = null
     private var currentFacing = CameraSelector.LENS_FACING_BACK
 
+    // Reusable buffers for performance
+    private var nv21: ByteArray? = null
+    private var uBytes: ByteArray? = null
+    private var vBytes: ByteArray? = null
+
+
     fun startCamera(initialFacing: Int) {
         currentFacing = initialFacing
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -68,35 +74,84 @@ class CameraStreamer(
     private inner class ImageAnalyzer : ImageAnalysis.Analyzer {
         @SuppressLint("UnsafeOptInUsageError")
         override fun analyze(image: ImageProxy) {
-            image.toJpeg()?.let { onFrame(it) }
+            toJpeg(image)?.let { onFrame(it) }
             image.close()
         }
     }
 
-    private fun ImageProxy.toJpeg(): ByteArray? {
-        if (format != ImageFormat.YUV_420_888) {
+    private fun toJpeg(image: ImageProxy): ByteArray? {
+        if (image.format != ImageFormat.YUV_420_888) {
             return null
         }
 
-        val yBuffer = planes[0].buffer
-        val uBuffer = planes[1].buffer
-        val vBuffer = planes[2].buffer
+        val nv21 = yuv420888ToNv21(image)
+        val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 80, out)
+        return out.toByteArray()
+    }
+
+    private fun yuv420888ToNv21(image: ImageProxy): ByteArray {
+        val yPlane = image.planes[0]
+        val uPlane = image.planes[1]
+        val vPlane = image.planes[2]
+
+        val yBuffer = yPlane.buffer
+        val uBuffer = uPlane.buffer
+        val vBuffer = vPlane.buffer
 
         val ySize = yBuffer.remaining()
         val uSize = uBuffer.remaining()
         val vSize = vBuffer.remaining()
+        
+        val nv21Size = image.width * image.height * 3 / 2
+        if (nv21 == null || nv21!!.size != nv21Size) {
+            nv21 = ByteArray(nv21Size)
+        }
+        val nv21 = this.nv21!!
 
-        val nv21 = ByteArray(ySize + uSize + vSize)
+        // Y plane copy
+        val yRowStride = yPlane.rowStride
+        if (yRowStride == image.width) {
+            yBuffer.get(nv21, 0, ySize)
+        } else {
+            var yIndex = 0
+            for (y in 0 until image.height) {
+                yBuffer.position(y * yRowStride)
+                yBuffer.get(nv21, yIndex, image.width)
+                yIndex += image.width
+            }
+        }
 
-        //U and V are swapped because YuvImage expects YV12, which has V before U.
-        //CameraX provides Y, U, V.
-        yBuffer.get(nv21, 0, ySize)
-        vBuffer.get(nv21, ySize, vSize)
-        uBuffer.get(nv21, ySize + vSize, uSize)
+        // U and V planes copy
+        val uRowStride = uPlane.rowStride
+        val vRowStride = vPlane.rowStride
+        val uPixelStride = uPlane.pixelStride
+        val vPixelStride = vPlane.pixelStride
 
-        val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
-        val out = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, width, height), 80, out)
-        return out.toByteArray()
+        if (uBytes == null || uBytes!!.size != uSize) {
+            uBytes = ByteArray(uSize)
+        }
+        val uBytes = this.uBytes!!
+        uBuffer.get(uBytes)
+
+        if (vBytes == null || vBytes!!.size != vSize) {
+            vBytes = ByteArray(vSize)
+        }
+        val vBytes = this.vBytes!!
+        vBuffer.get(vBytes)
+
+        var vuIndex = image.width * image.height
+        for (y in 0 until image.height / 2) {
+            for (x in 0 until image.width / 2) {
+                val uIndex = y * uRowStride + x * uPixelStride
+                val vIndex = y * vRowStride + x * vPixelStride
+                if (vuIndex < nv21.size - 1 && vIndex < vBytes.size && uIndex < uBytes.size) {
+                    nv21[vuIndex++] = vBytes[vIndex]
+                    nv21[vuIndex++] = uBytes[uIndex]
+                }
+            }
+        }
+        return nv21
     }
 }
