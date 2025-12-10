@@ -85,6 +85,9 @@
         const controlsDiv = document.getElementById('controls');
         const videoFeedImg = document.getElementById('videoFeed');
 
+        let audioContext;
+        let nextAudioTime = 0;
+
         function updateStatus(message, append = true) {
             const now = new Date();
             const formattedMessage = `<strong>[${now.toLocaleTimeString()}]</strong> ${message}`;
@@ -115,8 +118,18 @@
                 return;
             }
 
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                nextAudioTime = audioContext.currentTime;
+            } catch (e) {
+                console.error("Web Audio API is not supported in this browser.", e);
+                updateStatus('Web Audio API not supported.');
+                return;
+            }
+
             updateStatus('Attempting to connect to WebSocket...');
             ws = new WebSocket(wsUrl);
+            ws.binaryType = 'arraybuffer';
 
             ws.onopen = () => {
                 updateStatus('WebSocket Connected. Controls enabled.', false);
@@ -125,9 +138,17 @@
             };
 
             ws.onmessage = (event) => {
-                if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
-                    // This is likely audio data
-                    // For now, acknowledge without processing
+                if (event.data instanceof ArrayBuffer) {
+                    const rawData = new Int16Array(event.data);
+                    const floatData = new Float32Array(rawData.length);
+                    for (let i = 0; i < rawData.length; i++) {
+                        floatData[i] = rawData[i] / 32768.0;
+                    }
+                    
+                    const audioBuffer = audioContext.createBuffer(1, floatData.length, 16000);
+                    audioBuffer.copyToChannel(floatData, 0);
+                    
+                    playBuffer(audioBuffer);
                 } else {
                     try {
                         const message = JSON.parse(event.data);
@@ -157,12 +178,31 @@
                 controlsDiv.style.display = 'none';
                 videoFeedImg.style.display = 'none';
                 videoFeedImg.src = '';
+                if (audioContext && audioContext.state !== 'closed') {
+                    audioContext.close();
+                }
             };
 
             ws.onerror = (error) => {
                 updateStatus(`WebSocket Error: ${error.message || 'Unknown error'}`, false);
                 console.error('WebSocket Error:', error);
             };
+        }
+
+        function playBuffer(buffer) {
+            if (!audioContext || audioContext.state === 'closed') return;
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            
+            const currentTime = audioContext.currentTime;
+            if (currentTime < nextAudioTime) {
+                source.start(nextAudioTime);
+                nextAudioTime += buffer.duration;
+            } else {
+                source.start();
+                nextAudioTime = currentTime + buffer.duration;
+            }
         }
 
         function disconnectWebSocket() {
