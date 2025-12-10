@@ -73,6 +73,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startMonitorService() {
+        val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            putBoolean("monitoring_enabled", true)
+            apply()
+        }
+
         val intent = Intent(this, MonitorService::class.java).apply {
             action = MonitorActions.ACTION_START_MONITORING
         }
