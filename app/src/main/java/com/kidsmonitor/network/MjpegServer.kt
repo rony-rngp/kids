@@ -2,15 +2,16 @@ package com.kidsmonitor.network
 
 import java.io.DataOutputStream
 import java.net.ServerSocket
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 class MjpegServer(private val port: Int) {
     private var serverSocket: ServerSocket? = null
-    private val clients = ConcurrentHashMap.newKeySet<DataOutputStream>()
+    private val clients = Collections.newSetFromMap(ConcurrentHashMap<DataOutputStream, Boolean>())
     private val serverExecutor = Executors.newSingleThreadExecutor()
     private val clientExecutor = Executors.newCachedThreadPool()
-    @Volatile private var isRunning = false
+    @Volatile var isRunning = false
 
     fun start() {
         if (isRunning) return

@@ -1,187 +1,216 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Kids Monitor Viewer</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Remote Kids Monitor Control</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background-color: #f0f0f0; margin: 0; padding: 20px; }
-        #video-container {
-            display: inline-block;
-            position: relative;
-            background-color: #000;
-            border: 2px solid #333;
-            margin-top: 20px;
-            max-width: 90%;
-        }
-        #video {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-        #status {
-            margin-top: 10px;
-            font-size: 1.2em;
-            color: #555;
-        }
-        .controls {
-            margin-top: 20px;
-        }
+        body { font-family: sans-serif; margin: 20px; }
         input[type="text"] {
+            width: calc(100% - 22px);
             padding: 10px;
-            width: 200px;
-            font-size: 1em;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 16px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 1em;
-            border: none;
-            border-radius: 4px;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
             cursor: pointer;
-            background-color: #007bff;
-            color: white;
         }
-        button:hover {
-            background-color: #0056b3;
+        #status, #locationData {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            min-height: 50px;
+            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+        }
+        #videoFeed {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            display: none; /* Hidden by default */
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #eee;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <h1>Kids Monitor Viewer</h1>
-    <div class="controls">
-        <input type="text" id="ip" placeholder="Enter Child Device IP">
-        <button id="connectBtn">Connect</button>
+    <div class="container">
+        <h1>Remote Kids Monitor Control</h1>
+
+        <p>
+            Enter the IP address of the monitored Android device (e.g., 192.168.1.100).
+            The Android app's UI will show the IP address when the service starts.
+        </p>
+        <input type="text" id="ipAddress" placeholder="Enter Phone IP Address"> (Port: 8082 for WebSocket, 8081 for MJPEG)
+        <button onclick="connectWebSocket()">Connect</button>
+        <button onclick="disconnectWebSocket()">Disconnect</button>
+
+        <h2>Status</h2>
+        <div id="status">Not Connected</div>
+
+        <h2>Live Video Feed</h2>
+        <img id="videoFeed" src="" alt="Live Video Stream">
+
+        <h2>Location Data</h2>
+        <div id="locationData">No Location Data</div>
+
+        <h2>Controls</h2>
+        <div id="controls" style="display: none;">
+            <button onclick="sendCommand('startMonitoring')">Start Monitoring (Back Cam)</button>
+            <button onclick="sendCommand('switchCamera', { facing: 'front' })">Switch to Front Camera</button>
+            <button onclick="sendCommand('switchCamera', { facing: 'back' })">Switch to Back Camera</button>
+            <button onclick="sendCommand('audioOn')">Start Audio Monitoring</button>
+            <button onclick="sendCommand('audioOff')">Stop Audio Monitoring</button>
+            <!-- Location buttons removed as per user request -->
+            <button onclick="sendCommand('stopMonitoring')">Stop Monitoring</button>
+        </div>
     </div>
-    <div id="video-container">
-        <img id="video" src="" alt="Video stream will appear here">
-    </div>
-    <div id="status">Disconnected</div>
 
     <script>
-        const ipInput = document.getElementById('ip');
-        const connectBtn = document.getElementById('connectBtn');
-        const video = document.getElementById('video');
+        let ws;
         const statusDiv = document.getElementById('status');
+        const locationDiv = document.getElementById('locationData');
+        const ipAddressInput = document.getElementById('ipAddress');
+        const controlsDiv = document.getElementById('controls');
+        const videoFeedImg = document.getElementById('videoFeed');
 
-        let audioSocket;
-        let audioContext;
-        let nextAudioTime = 0;
+        function updateStatus(message, append = true) {
+            const now = new Date();
+            const formattedMessage = `<strong>[${now.toLocaleTimeString()}]</strong> ${message}`;
+            if (append) {
+                statusDiv.innerHTML = formattedMessage + '<br>' + statusDiv.innerHTML;
+            } else {
+                statusDiv.innerHTML = formattedMessage;
+            }
+        }
 
-        connectBtn.addEventListener('click', () => {
-            const ip = ipInput.value.trim();
+        function updateLocation(data) {
+            // This function is still here, but location data from APK is removed
+            locationDiv.innerHTML = `<strong>Latitude:</strong> ${data.latitude}<br>
+                                     <strong>Longitude:</strong> ${data.longitude}<br>
+                                     <strong>Accuracy:</strong> ${data.accuracy} m`;
+        }
+
+        function connectWebSocket() {
+            const ip = ipAddressInput.value;
             if (!ip) {
-                alert('Please enter an IP address.');
+                updateStatus('Error: Please enter the phone\'s IP address.');
                 return;
             }
-            connect(ip);
-        });
+            const wsUrl = `ws://${ip}:8082`;
 
-        function connect(ip) {
-            disconnect(); 
-
-            // --- Video MJPEG Stream ---
-            video.src = `http://${ip}:8081`;
-            video.onload = () => {
-                console.log('MJPEG stream started.');
-                updateStatus(true); // Video is considered 'connected'
-            };
-            video.onerror = () => {
-                console.error('MJPEG stream error.');
-                video.src = ""; // Clear src on error
-                updateStatus(false);
-            };
-
-
-            // --- Audio WebSocket ---
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                nextAudioTime = audioContext.currentTime;
-            } catch (e) {
-                console.error("Web Audio API is not supported in this browser.", e);
-                statusDiv.textContent = 'Web Audio API not supported.';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                updateStatus('Already connected.');
                 return;
             }
 
+            updateStatus('Attempting to connect to WebSocket...');
+            ws = new WebSocket(wsUrl);
 
-            audioSocket = new WebSocket(`ws://${ip}:8082`);
-            audioSocket.binaryType = 'arraybuffer';
-            audioSocket.onopen = () => {
-                console.log('Audio WebSocket connected.');
-                updateStatus(video.src !== "");
+            ws.onopen = () => {
+                updateStatus('WebSocket Connected. Controls enabled.', false);
+                controlsDiv.style.display = 'block';
+                // APK will send IP automatically on connection
             };
-            audioSocket.onmessage = (event) => {
-                const rawData = new Int16Array(event.data);
-                const floatData = new Float32Array(rawData.length);
-                for (let i = 0; i < rawData.length; i++) {
-                    floatData[i] = rawData[i] / 32768.0;
+
+            ws.onmessage = (event) => {
+                if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
+                    // This is likely audio data
+                    // For now, acknowledge without processing
+                } else {
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'status') {
+                            updateStatus(`APK Status: ${message.message}`);
+                        } else if (message.type === 'location') {
+                            // Location data is no longer sent by APK
+                            // updateLocation(message);
+                            updateStatus(`Received (unsolicited) location: ${JSON.stringify(message)}`);
+                        } else if (message.type === 'error') {
+                            updateStatus(`APK Error: ${message.message}`);
+                        } else if (message.type === 'ipAddress') {
+                            ipAddressInput.value = message.ip; // Auto-fill if not already set by user
+                            updateStatus(`APK IP: ${message.ip}`);
+                        }
+                        else {
+                            updateStatus(`Received: ${event.data}`);
+                        }
+                    } catch (e) {
+                        updateStatus(`Received (non-JSON text): ${event.data}`);
+                    }
                 }
-                
-                const audioBuffer = audioContext.createBuffer(1, floatData.length, 16000);
-                audioBuffer.copyToChannel(floatData, 0);
-                
-                playBuffer(audioBuffer);
             };
-            audioSocket.onclose = () => {
-                console.log('Audio WebSocket disconnected.');
-                updateStatus(video.src !== "");
+
+            ws.onclose = () => {
+                updateStatus('WebSocket Disconnected. Controls disabled.', false);
+                controlsDiv.style.display = 'none';
+                videoFeedImg.style.display = 'none';
+                videoFeedImg.src = '';
             };
-            audioSocket.onerror = (error) => {
-                console.error('Audio WebSocket error:', error);
-                updateStatus(video.src !== "");
+
+            ws.onerror = (error) => {
+                updateStatus(`WebSocket Error: ${error.message || 'Unknown error'}`, false);
+                console.error('WebSocket Error:', error);
             };
         }
-        
-        function playBuffer(buffer) {
-            if (!audioContext || audioContext.state === 'closed') return;
-            const source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
-            
-            const currentTime = audioContext.currentTime;
-            if (currentTime < nextAudioTime) {
-                source.start(nextAudioTime);
-                nextAudioTime += buffer.duration;
+
+        function disconnectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
             } else {
-                source.start();
-                nextAudioTime = currentTime + buffer.duration;
+                updateStatus('Not connected.', false);
             }
         }
 
-        function updateStatus(isVideoConnected) {
-            const audioState = audioSocket ? audioSocket.readyState : 0; // 1 = OPEN
-            
-            if (isVideoConnected && audioState === 1) {
-                statusDiv.textContent = 'Connected (Video + Audio)';
-                statusDiv.style.color = 'green';
-            } else if (isVideoConnected) {
-                statusDiv.textContent = 'Connected (Video Only)';
-                statusDiv.style.color = 'orange';
-            } else if (audioState === 1) {
-                statusDiv.textContent = 'Connected (Audio Only)';
-                statusDiv.style.color = 'orange';
+        function sendCommand(commandType, data = {}) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const command = {
+                    type: commandType,
+                    data: data
+                };
+                ws.send(JSON.stringify(command));
+                updateStatus(`Sent command: ${commandType}`);
+
+                if (commandType === 'startMonitoring') {
+                    const ip = ipAddressInput.value;
+                    if (ip) {
+                        videoFeedImg.src = `http://${ip}:8081`;
+                        videoFeedImg.style.display = 'block';
+                    } else {
+                        updateStatus('Cannot start video feed: IP address not set.');
+                    }
+                } else if (commandType === 'stopMonitoring') {
+                    videoFeedImg.style.display = 'none';
+                    videoFeedImg.src = '';
+                }
+
             } else {
-                statusDiv.textContent = 'Disconnected';
-                statusDiv.style.color = 'red';
+                updateStatus('Not connected to WebSocket. Please connect first.');
             }
         }
-        
-        function disconnect() {
-            video.src = "";
-            video.onload = null;
-            video.onerror = null;
 
-            if (audioSocket) {
-                audioSocket.onclose = null;
-                audioSocket.close();
+        // Auto-fill IP from local storage or prompt
+        window.onload = () => {
+            const savedIp = localStorage.getItem('monitorIpAddress');
+            if (savedIp) {
+                ipAddressInput.value = savedIp;
             }
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.close();
-            }
-            updateStatus(false);
-        }
 
-        window.addEventListener('beforeunload', disconnect);
-
+            ipAddressInput.addEventListener('change', () => {
+                localStorage.setItem('monitorIpAddress', ipAddressInput.value);
+            });
+        };
     </script>
 </body>
 </html>

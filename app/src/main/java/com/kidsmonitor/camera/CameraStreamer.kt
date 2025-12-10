@@ -6,6 +6,7 @@ import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.util.Size
+import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -28,8 +29,6 @@ class CameraStreamer(
 
     // Reusable buffers for performance
     private var nv21: ByteArray? = null
-    private var uBytes: ByteArray? = null
-    private var vBytes: ByteArray? = null
 
 
     fun startCamera(initialFacing: Int) {
@@ -42,13 +41,22 @@ class CameraStreamer(
     }
 
     fun switchCamera(facing: Int) {
+        Log.d("CameraStreamer", "Switching camera to $facing")
         if (currentFacing != facing) {
             currentFacing = facing
+            rebindCameraUseCases()
+        }
+    }
+
+    private fun rebindCameraUseCases() {
+        val mainExecutor = ContextCompat.getMainExecutor(context)
+        mainExecutor.execute {
             bindCameraUseCases()
         }
     }
 
     private fun bindCameraUseCases() {
+        Log.d("CameraStreamer", "Binding camera use cases for facing $currentFacing")
         val provider = cameraProvider ?: return
         provider.unbindAll()
 
@@ -64,8 +72,9 @@ class CameraStreamer(
 
         try {
             provider.bindToLifecycle(lifecycleOwner, cameraSelector, imageAnalysis)
+            Log.d("CameraStreamer", "Camera use cases bound successfully")
         } catch (exc: Exception) {
-            // Log or handle exceptions
+            Log.e("CameraStreamer", "Use case binding failed", exc)
         }
     }
 
@@ -86,74 +95,66 @@ class CameraStreamer(
             return null
         }
 
-        val nv21 = yuv420888ToNv21(image)
-        val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
-        val out = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 95, out)
-        return out.toByteArray()
+        val nv21 = image.toNv21ByteArray()
+        if (nv21 != null) {
+            val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
+            val out = ByteArrayOutputStream()
+            yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 95, out)
+            return out.toByteArray()
+        }
+        return null
     }
 
-    private fun yuv420888ToNv21(image: ImageProxy): ByteArray {
-        val yPlane = image.planes[0]
-        val uPlane = image.planes[1]
-        val vPlane = image.planes[2]
+    fun ImageProxy.toNv21ByteArray(): ByteArray? {
+        if (format != android.graphics.ImageFormat.YUV_420_888) {
+            return null
+        }
+
+        val yPlane = planes[0]
+        val uPlane = planes[1]
+        val vPlane = planes[2]
 
         val yBuffer = yPlane.buffer
         val uBuffer = uPlane.buffer
         val vBuffer = vPlane.buffer
 
-        val ySize = yBuffer.remaining()
-        val uSize = uBuffer.remaining()
-        val vSize = vBuffer.remaining()
-        
-        val nv21Size = image.width * image.height * 3 / 2
-        if (nv21 == null || nv21!!.size != nv21Size) {
-            nv21 = ByteArray(nv21Size)
-        }
-        val nv21 = this.nv21!!
+        val width = width
+        val height = height
 
-        // Y plane copy
+        val nv21ByteArray = ByteArray(width * height * 3 / 2)
+
+        var nv21WriteIndex = 0
         val yRowStride = yPlane.rowStride
-        if (yRowStride == image.width) {
-            yBuffer.get(nv21, 0, ySize)
+        val yPixelStride = yPlane.pixelStride
+
+        if (yRowStride == width) {
+            yBuffer.get(nv21ByteArray, 0, width * height)
+            nv21WriteIndex += width * height
         } else {
-            var yIndex = 0
-            for (y in 0 until image.height) {
-                yBuffer.position(y * yRowStride)
-                yBuffer.get(nv21, yIndex, image.width)
-                yIndex += image.width
-            }
-        }
-
-        // U and V planes copy
-        val uRowStride = uPlane.rowStride
-        val vRowStride = vPlane.rowStride
-        val uPixelStride = uPlane.pixelStride
-        val vPixelStride = vPlane.pixelStride
-
-        if (uBytes == null || uBytes!!.size != uSize) {
-            uBytes = ByteArray(uSize)
-        }
-        val uBytes = this.uBytes!!
-        uBuffer.get(uBytes)
-
-        if (vBytes == null || vBytes!!.size != vSize) {
-            vBytes = ByteArray(vSize)
-        }
-        val vBytes = this.vBytes!!
-        vBuffer.get(vBytes)
-
-        var vuIndex = image.width * image.height
-        for (y in 0 until image.height / 2) {
-            for (x in 0 until image.width / 2) {
-                val uIndex = y * uRowStride + x * uPixelStride
-                val vIndex = y * vRowStride + x * vPixelStride
-                if (vuIndex < nv21.size - 1 && vIndex < vBytes.size && uIndex < uBytes.size) {
-                    nv21[vuIndex++] = vBytes[vIndex]
-                    nv21[vuIndex++] = uBytes[uIndex]
+            for (row in 0 until height) {
+                yBuffer.get(nv21ByteArray, nv21WriteIndex, width)
+                nv21WriteIndex += width
+                if (row < height - 1) {
+                    yBuffer.position(yBuffer.position() + yRowStride - width)
                 }
             }
         }
-        return nv21
+
+        val chromaWidth = width / 2
+        val chromaHeight = height / 2
+
+        val vRowStride = vPlane.rowStride
+        val vPixelStride = vPlane.pixelStride
+        val uRowStride = uPlane.rowStride
+        val uPixelStride = uPlane.pixelStride
+
+        for (row in 0 until chromaHeight) {
+            for (col in 0 until chromaWidth) {
+                nv21ByteArray[nv21WriteIndex++] = vBuffer.get(row * vRowStride + col * vPixelStride)
+                nv21ByteArray[nv21WriteIndex++] = uBuffer.get(row * uRowStride + col * uPixelStride)
+            }
+        }
+
+        return nv21ByteArray
     }
 }
