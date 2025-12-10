@@ -65,6 +65,12 @@ class MonitorService : LifecycleService(), CommandListener {
                 "stopMonitoring" -> {
                     Log.d("MonitorService", "Executing stopMonitoring command.")
                     cameraStreamer.stopCamera()
+                    if (isMicOn) {
+                        isMicOn = false
+                        audioStreamer?.stop()
+                        audioStreamer = null
+                        updateNotification()
+                    }
                     audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Monitoring stopped.\" }")
                 }
                 "switchCamera" -> {

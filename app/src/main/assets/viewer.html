@@ -62,8 +62,8 @@
         <h2>Live Video Feed</h2>
         <img id="videoFeed" src="" alt="Live Video Stream">
 
-        <h2>Location Data</h2>
-        <div id="locationData">No Location Data</div>
+        <h2>Running Services</h2>
+        <div id="serviceStatus">Camera: OFF, Audio: OFF</div>
 
         <h2>Controls</h2>
         <div id="controls" style="display: none;">
@@ -72,7 +72,6 @@
             <button onclick="sendCommand('switchCamera', { facing: 'back' })">Switch to Back Camera</button>
             <button onclick="sendCommand('audioOn')">Start Audio Monitoring</button>
             <button onclick="sendCommand('audioOff')">Stop Audio Monitoring</button>
-            <!-- Location buttons removed as per user request -->
             <button onclick="sendCommand('stopMonitoring')">Stop Monitoring</button>
         </div>
     </div>
@@ -80,13 +79,15 @@
     <script>
         let ws;
         const statusDiv = document.getElementById('status');
-        const locationDiv = document.getElementById('locationData');
         const ipAddressInput = document.getElementById('ipAddress');
         const controlsDiv = document.getElementById('controls');
         const videoFeedImg = document.getElementById('videoFeed');
+        const serviceStatusDiv = document.getElementById('serviceStatus');
 
         let audioContext;
         let nextAudioTime = 0;
+        let isCameraOn = false;
+        let isAudioOn = false;
 
         function updateStatus(message, append = true) {
             const now = new Date();
@@ -98,11 +99,8 @@
             }
         }
 
-        function updateLocation(data) {
-            // This function is still here, but location data from APK is removed
-            locationDiv.innerHTML = `<strong>Latitude:</strong> ${data.latitude}<br>
-                                     <strong>Longitude:</strong> ${data.longitude}<br>
-                                     <strong>Accuracy:</strong> ${data.accuracy} m`;
+        function updateServiceStatus() {
+            serviceStatusDiv.textContent = `Camera: ${isCameraOn ? 'ON' : 'OFF'}, Audio: ${isAudioOn ? 'ON' : 'OFF'}`;
         }
 
         function connectWebSocket() {
@@ -134,6 +132,9 @@
             ws.onopen = () => {
                 updateStatus('WebSocket Connected. Controls enabled.', false);
                 controlsDiv.style.display = 'block';
+                isCameraOn = false;
+                isAudioOn = false;
+                updateServiceStatus();
                 // APK will send IP automatically on connection
             };
 
@@ -154,10 +155,19 @@
                         const message = JSON.parse(event.data);
                         if (message.type === 'status') {
                             updateStatus(`APK Status: ${message.message}`);
-                        } else if (message.type === 'location') {
-                            // Location data is no longer sent by APK
-                            // updateLocation(message);
-                            updateStatus(`Received (unsolicited) location: ${JSON.stringify(message)}`);
+                            if (message.message.includes('Monitoring started')) {
+                                isCameraOn = true;
+                            } else if (message.message.includes('Monitoring stopped')) {
+                                isCameraOn = false;
+                                isAudioOn = false; // Audio also stops when monitoring stops
+                            } else if (message.message.includes('Audio monitoring started')) {
+                                isAudioOn = true;
+                            } else if (message.message.includes('Audio monitoring stopped')) {
+                                isAudioOn = false;
+                            } else if (message.message.includes('Camera switched to')) {
+                                // Camera switch doesn't change overall monitoring state, just the camera used
+                            }
+                            updateServiceStatus();
                         } else if (message.type === 'error') {
                             updateStatus(`APK Error: ${message.message}`);
                         } else if (message.type === 'ipAddress') {
@@ -181,6 +191,9 @@
                 if (audioContext && audioContext.state !== 'closed') {
                     audioContext.close();
                 }
+                isCameraOn = false;
+                isAudioOn = false;
+                updateServiceStatus();
             };
 
             ws.onerror = (error) => {
@@ -233,7 +246,12 @@
                 } else if (commandType === 'stopMonitoring') {
                     videoFeedImg.style.display = 'none';
                     videoFeedImg.src = '';
+                } else if (commandType === 'audioOn') {
+                    isAudioOn = true;
+                } else if (commandType === 'audioOff') {
+                    isAudioOn = false;
                 }
+                updateServiceStatus();
 
             } else {
                 updateStatus('Not connected to WebSocket. Please connect first.');
