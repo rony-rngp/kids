@@ -4,76 +4,204 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Remote Kids Monitor Control</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        input[type="text"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 16px;
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #121212;
+            --surface-color: #1e1e1e;
+            --on-surface-color: #ffffff;
+            --error-color: #cf6679;
         }
-        button {
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--on-surface-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 16px;
+            max-width: 500px;
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5em;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        h2 {
+            font-size: 1.2em;
+            margin-bottom: 12px;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--primary-color);
+            padding-bottom: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .input-group p {
+            margin: 0;
+            font-size: 0.9em;
+            color: var(--secondary-color);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            background-color: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: var(--on-surface-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
+            color: white;
+            background-color: var(--primary-color);
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
-        #status, #locationData {
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button.disconnect {
+            background-color: var(--error-color);
+        }
+        
+        button.disconnect:hover {
+            background-color: #b04f5d;
+        }
+
+        #status {
             margin-top: 10px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            background-color: #f0f0f0;
-            min-height: 50px;
-            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+            padding: 12px;
+            border: 1px solid #3a3a3a;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.9em;
+            overflow-y: auto;
         }
+
         #videoFeed {
             width: 100%;
-            max-width: 640px;
             height: auto;
-            border: 1px solid #ccc;
-            margin-top: 20px;
+            border: 1px solid #3a3a3a;
+            margin-top: 16px;
             display: none; /* Hidden by default */
+            border-radius: 8px;
         }
-        .container {
-            max-width: 400px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #eee;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+
+        #serviceStatus {
+            padding: 12px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            font-weight: bold;
         }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Remote Kids Monitor Control</h1>
+        <header>Remote Kids Monitor Control</header>
+        <main>
+            <section class="section">
+                <h2><i class="fas fa-network-wired"></i> Connection</h2>
+                <div class="input-group">
+                    <p>Enter the IP address of the monitored Android device (e.g., 192.168.1.100).</p>
+                    <input type="text" id="ipAddress" placeholder="Enter Phone IP Address">
+                    <div class="button-group">
+                        <button onclick="connectWebSocket()"><i class="fas fa-plug"></i> Connect</button>
+                        <button onclick="disconnectWebSocket()" class="disconnect"><i class="fas fa-unplug"></i> Disconnect</button>
+                    </div>
+                </div>
+            </section>
 
-        <p>
-            Enter the IP address of the monitored Android device (e.g., 192.168.1.100).
-            The Android app's UI will show the IP address when the service starts.
-        </p>
-        <input type="text" id="ipAddress" placeholder="Enter Phone IP Address"> (Port: 8082 for WebSocket, 8081 for MJPEG)
-        <button onclick="connectWebSocket()">Connect</button>
-        <button onclick="disconnectWebSocket()">Disconnect</button>
+            <section class="section">
+                <h2><i class="fas fa-info-circle"></i> Status</h2>
+                <div id="status">Not Connected</div>
+            </section>
+            
+            <section class="section">
+                <h2><i class="fas fa-cogs"></i> Running Services</h2>
+                <div id="serviceStatus">Camera: OFF, Audio: OFF</div>
+            </section>
 
-        <h2>Status</h2>
-        <div id="status">Not Connected</div>
+            <section class="section" id="controls" style="display: none;">
+                <h2><i class="fas fa-video"></i> Live Video Feed</h2>
+                <img id="videoFeed" src="" alt="Live Video Stream">
 
-        <h2>Live Video Feed</h2>
-        <img id="videoFeed" src="" alt="Live Video Stream">
-
-        <h2>Running Services</h2>
-        <div id="serviceStatus">Camera: OFF, Audio: OFF</div>
-
-        <h2>Controls</h2>
-        <div id="controls" style="display: none;">
-            <button onclick="sendCommand('startMonitoring')">Start Monitoring (Back Cam)</button>
-            <button onclick="sendCommand('switchCamera', { facing: 'front' })">Switch to Front Camera</button>
-            <button onclick="sendCommand('switchCamera', { facing: 'back' })">Switch to Back Camera</button>
-            <button onclick="sendCommand('audioOn')">Start Audio Monitoring</button>
-            <button onclick="sendCommand('audioOff')">Stop Audio Monitoring</button>
-            <button onclick="sendCommand('stopMonitoring')">Stop Monitoring</button>
-        </div>
+                <h2><i class="fas fa-gamepad"></i> Controls</h2>
+                <div class="controls-grid">
+                    <button onclick="sendCommand('startMonitoring')"><i class="fas fa-play-circle"></i> Start Monitor</button>
+                    <button onclick="sendCommand('stopMonitoring')"><i class="fas fa-stop-circle"></i> Stop Monitor</button>
+                    <button onclick="sendCommand('switchCamera', { facing: 'front' })"><i class="fas fa-sync-alt"></i> Front Camera</button>
+                    <button onclick="sendCommand('switchCamera', { facing: 'back' })"><i class="fas fa-sync-alt"></i> Back Camera</button>
+                    <button onclick="sendCommand('audioOn')"><i class="fas fa-microphone"></i> Start Audio</button>
+                    <button onclick="sendCommand('audioOff')"><i class="fas fa-microphone-slash"></i> Stop Audio</button>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script>
