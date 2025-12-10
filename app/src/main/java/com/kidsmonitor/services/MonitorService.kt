@@ -4,9 +4,16 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -28,25 +35,81 @@ import android.util.Log
 class MonitorService : LifecycleService(), CommandListener {
 
     private val mjpegServer = MjpegServer(8081)
-    private val audioServer = AudioWebSocketServer(8082, this, this) // Pass context and 'this' as CommandListener
+    private val audioServer = AudioWebSocketServer(8082, this, this)
 
     private lateinit var cameraStreamer: CameraStreamer
     private var audioStreamer: AudioStreamer? = null
 
     private var isMicOn = false
+    private var activeClients = 0
+    private var lastPingTime = 0L
+
+    private val autoStopHandler = Handler(Looper.getMainLooper())
+    private val autoStopRunnable = Runnable {
+        stopCamera()
+        stopMicrophone()
+        updateNotification("Idle (no viewer)")
+    }
+
+    private val heartbeatHandler = Handler(Looper.getMainLooper())
+    private val heartbeatRunnable = object : Runnable {
+        override fun run() {
+            if (activeClients > 0 && System.currentTimeMillis() - lastPingTime > 15000) {
+                activeClients = 0
+                stopCamera()
+                stopMicrophone()
+                updateNotification("Idle (no viewer)")
+            }
+            heartbeatHandler.postDelayed(this, 5000)
+        }
+    }
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onLost(network: Network) {
+            if (!isWifiConnected()) {
+                stopCamera()
+                stopMicrophone()
+                updateNotification("No Wi-Fi")
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         cameraStreamer = CameraStreamer(this, this) { frame ->
             mjpegServer.broadcastFrame(frame)
         }
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkRequest = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .build()
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+        startHeartbeatChecker()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager.unregisterNetworkCallback(networkCallback)
+        stopHeartbeatChecker()
+        stopForegroundService()
     }
 
     private fun hasPermission(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
     }
 
+    override fun onClientCountChanged(count: Int) {
+        activeClients = count
+        if (activeClients == 0) {
+            scheduleAutoStop()
+        } else {
+            cancelAutoStop()
+        }
+    }
+
     override fun onCommandReceived(client: WebSocket, message: String) {
+        lastPingTime = System.currentTimeMillis()
         Log.d("MonitorService", "Command received: $message")
         try {
             val command = Gson().fromJson(message, Command::class.java)
@@ -59,18 +122,13 @@ class MonitorService : LifecycleService(), CommandListener {
                         Log.w("MonitorService", "Camera permission not granted for startMonitoring.")
                         return
                     }
-                    cameraStreamer.startCamera(CameraFacing.BACK)
+                    startCamera()
                     audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Monitoring started.\" }")
                 }
                 "stopMonitoring" -> {
                     Log.d("MonitorService", "Executing stopMonitoring command.")
-                    cameraStreamer.stopCamera()
-                    if (isMicOn) {
-                        isMicOn = false
-                        audioStreamer?.stop()
-                        audioStreamer = null
-                        updateNotification()
-                    }
+                    stopCamera()
+                    stopMicrophone()
                     audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Monitoring stopped.\" }")
                 }
                 "switchCamera" -> {
@@ -95,15 +153,8 @@ class MonitorService : LifecycleService(), CommandListener {
                         Log.w("MonitorService", "Record audio permission not granted for audioOn.")
                         return
                     }
-                    if (!isMicOn) {
-                        isMicOn = true
-                        audioStreamer = AudioStreamer { chunk ->
-                            audioServer.broadcastAudio(chunk)
-                        }
-                        audioStreamer?.start()
-                        updateNotification()
-                        audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Audio monitoring started.\" }")
-                    }
+                    startMicrophone()
+                    audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Audio monitoring started.\" }")
                 }
                 "audioOff" -> {
                     Log.d("MonitorService", "Executing audioOff command.")
@@ -112,13 +163,11 @@ class MonitorService : LifecycleService(), CommandListener {
                         Log.w("MonitorService", "Record audio permission not granted for audioOff.")
                         return
                     }
-                    if (isMicOn) {
-                        isMicOn = false
-                        audioStreamer?.stop()
-                        audioStreamer = null
-                        updateNotification()
-                        audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Audio monitoring stopped.\" }")
-                    }
+                    stopMicrophone()
+                    audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Audio monitoring stopped.\" }")
+                }
+                "ping" -> {
+                    // Do nothing, lastPingTime is already updated
                 }
                 "getIp" -> {
                     Log.d("MonitorService", "Executing getIp command.")
@@ -148,35 +197,13 @@ class MonitorService : LifecycleService(), CommandListener {
             MonitorActions.ACTION_STOP_MONITORING -> {
                 stopForegroundService()
             }
-            MonitorActions.ACTION_SWITCH_CAMERA -> {
-                val facing = intent.getIntExtra(MonitorActions.EXTRA_FACING, CameraFacing.BACK)
-                cameraStreamer.switchCamera(facing)
-            }
-            MonitorActions.ACTION_AUDIO_ON -> {
-                if (hasPermission(Manifest.permission.RECORD_AUDIO) && !isMicOn) {
-                    isMicOn = true
-                    audioStreamer = AudioStreamer { chunk ->
-                        audioServer.broadcastAudio(chunk)
-                    }
-                    audioStreamer?.start()
-                    updateNotification()
-                }
-            }
-            MonitorActions.ACTION_AUDIO_OFF -> {
-                if (isMicOn) {
-                    isMicOn = false
-                    audioStreamer?.stop()
-                    audioStreamer = null
-                    updateNotification()
-                }
-            }
         }
         return START_STICKY
     }
 
     private fun startForegroundService() {
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification())
+        startForeground(NOTIFICATION_ID, createNotification("Servers running"))
 
         if (!mjpegServer.isRunning) {
             mjpegServer.start()
@@ -194,7 +221,8 @@ class MonitorService : LifecycleService(), CommandListener {
     }
 
     private fun stopForegroundService() {
-        cameraStreamer.stopCamera()
+        stopCamera()
+        stopMicrophone()
         if (mjpegServer.isRunning) {
             mjpegServer.stop()
             Log.d("MonitorService", "MJPEG Server stopped.")
@@ -209,27 +237,82 @@ class MonitorService : LifecycleService(), CommandListener {
             Log.d("MonitorService", "Audio WebSocket Server not running.")
         }
 
-        audioStreamer?.stop()
-        audioStreamer = null
-        isMicOn = false
-        updateNotification()
         stopForeground(true)
         stopSelf()
         Log.d("MonitorService", "MonitorService stopped.")
     }
 
-    private fun updateNotification() {
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, createNotification())
+    private fun startCamera() {
+        if (isWifiConnected() && activeClients > 0) {
+            cameraStreamer.startCamera(CameraFacing.BACK)
+            updateNotification("Video monitoring active")
+        }
     }
 
-    private fun createNotification(): Notification {
-        val micStatus = if (isMicOn) "Mic: ON" else "Mic: OFF"
-        val notificationText = "Video monitoring is active ($micStatus)"
+    private fun stopCamera() {
+        cameraStreamer.stopCamera()
+        updateNotification("Servers running")
+    }
 
+    private fun startMicrophone() {
+        if (isWifiConnected() && activeClients > 0 && !isMicOn) {
+            isMicOn = true
+            audioStreamer = AudioStreamer { chunk ->
+                audioServer.broadcastAudio(chunk)
+            }
+            audioStreamer?.start()
+            updateNotification("Video and audio monitoring active")
+        }
+    }
+
+    private fun stopMicrophone() {
+        if (isMicOn) {
+            isMicOn = false
+            audioStreamer?.stop()
+            audioStreamer = null
+            updateNotification("Video monitoring active")
+        }
+    }
+
+    private fun scheduleAutoStop() {
+        autoStopHandler.postDelayed(autoStopRunnable, 10000)
+    }
+
+    private fun cancelAutoStop() {
+        autoStopHandler.removeCallbacks(autoStopRunnable)
+    }
+
+    private fun startHeartbeatChecker() {
+        heartbeatHandler.post(heartbeatRunnable)
+    }
+
+    private fun stopHeartbeatChecker() {
+        heartbeatHandler.removeCallbacks(heartbeatRunnable)
+    }
+
+    private fun isWifiConnected(): Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+            return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        } else {
+            @Suppress("DEPRECATION")
+            val networkInfo = connectivityManager.activeNetworkInfo ?: return false
+            @Suppress("DEPRECATION")
+            return networkInfo.isConnected && networkInfo.type == ConnectivityManager.TYPE_WIFI
+        }
+    }
+
+    private fun updateNotification(text: String) {
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(NOTIFICATION_ID, createNotification(text))
+    }
+
+    private fun createNotification(text: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Kids Monitor")
-            .setContentText(notificationText)
+            .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .build()
@@ -254,11 +337,6 @@ class MonitorService : LifecycleService(), CommandListener {
         restartServiceIntent.setPackage(packageName)
         startService(restartServiceIntent)
         super.onTaskRemoved(rootIntent)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        stopForegroundService()
     }
 
     companion object {

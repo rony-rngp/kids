@@ -12,6 +12,7 @@ import com.kidsmonitor.network.NetworkUtils // Ensure NetworkUtils is imported
 
 interface CommandListener {
     fun onCommandReceived(client: WebSocket, message: String)
+    fun onClientCountChanged(count: Int)
 }
 
 class AudioWebSocketServer(port: Int, private val context: Context, private val commandListener: CommandListener?) : WebSocketServer(InetSocketAddress(port)) {
@@ -24,6 +25,7 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
         conn?.let {
             clients.add(it)
+            commandListener?.onClientCountChanged(clients.size)
             // Send IP address to newly connected client
             val ip = NetworkUtils.getLocalIpAddress(context)
             sendMessage(it, "{ \"type\": \"ipAddress\", \"ip\": \"$ip\" }")
@@ -31,7 +33,10 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
     }
 
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
-        conn?.let { clients.remove(it) }
+        conn?.let { 
+            clients.remove(it)
+            commandListener?.onClientCountChanged(clients.size)
+        }
         _isRunning = false // Update running state
     }
 

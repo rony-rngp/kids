@@ -88,15 +88,21 @@
         let nextAudioTime = 0;
         let isCameraOn = false;
         let isAudioOn = false;
+        let heartbeatInterval;
+        const statusLogs = []; // Array to store recent status messages
 
         function updateStatus(message, append = true) {
             const now = new Date();
             const formattedMessage = `<strong>[${now.toLocaleTimeString()}]</strong> ${message}`;
-            if (append) {
-                statusDiv.innerHTML = formattedMessage + '<br>' + statusDiv.innerHTML;
-            } else {
-                statusDiv.innerHTML = formattedMessage;
+            statusLogs.push(formattedMessage); // Add new message to the end
+
+            // Keep only the last 5 messages
+            if (statusLogs.length > 5) {
+                statusLogs.shift(); // Remove the oldest message from the beginning
             }
+            
+            // Display messages in reverse order (newest first)
+            statusDiv.innerHTML = statusLogs.slice().reverse().join('<br>');
         }
 
         function updateServiceStatus() {
@@ -135,6 +141,9 @@
                 isCameraOn = false;
                 isAudioOn = false;
                 updateServiceStatus();
+                heartbeatInterval = setInterval(() => {
+                    sendCommand('ping');
+                }, 5000);
                 // APK will send IP automatically on connection
             };
 
@@ -194,6 +203,7 @@
                 isCameraOn = false;
                 isAudioOn = false;
                 updateServiceStatus();
+                clearInterval(heartbeatInterval);
             };
 
             ws.onerror = (error) => {
@@ -224,6 +234,7 @@
             } else {
                 updateStatus('Not connected.', false);
             }
+            clearInterval(heartbeatInterval);
         }
 
         function sendCommand(commandType, data = {}) {
