@@ -79,7 +79,10 @@ class CameraStreamer(
     }
 
     fun stopCamera() {
-        cameraProvider?.unbindAll()
+        val mainExecutor = ContextCompat.getMainExecutor(context)
+        mainExecutor.execute {
+            cameraProvider?.unbindAll()
+        }
     }
 
     private inner class ImageAnalyzer : ImageAnalysis.Analyzer {

@@ -59,12 +59,12 @@ class MonitorService : LifecycleService(), CommandListener {
                         Log.w("MonitorService", "Camera permission not granted for startMonitoring.")
                         return
                     }
-                    startMonitoring()
+                    cameraStreamer.startCamera(CameraFacing.BACK)
                     audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Monitoring started.\" }")
                 }
                 "stopMonitoring" -> {
                     Log.d("MonitorService", "Executing stopMonitoring command.")
-                    stopMonitoring()
+                    cameraStreamer.stopCamera()
                     audioServer.sendMessage(client, "{ \"type\": \"status\", \"message\": \"Monitoring stopped.\" }")
                 }
                 "switchCamera" -> {
@@ -137,10 +137,10 @@ class MonitorService : LifecycleService(), CommandListener {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             MonitorActions.ACTION_START_MONITORING -> {
-                startMonitoring()
+                startForegroundService()
             }
             MonitorActions.ACTION_STOP_MONITORING -> {
-                stopMonitoring()
+                stopForegroundService()
             }
             MonitorActions.ACTION_SWITCH_CAMERA -> {
                 val facing = intent.getIntExtra(MonitorActions.EXTRA_FACING, CameraFacing.BACK)
@@ -168,7 +168,7 @@ class MonitorService : LifecycleService(), CommandListener {
         return START_STICKY
     }
 
-    private fun startMonitoring() {
+    private fun startForegroundService() {
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, createNotification())
 
@@ -185,13 +185,10 @@ class MonitorService : LifecycleService(), CommandListener {
         } else {
             Log.d("MonitorService", "Audio WebSocket Server already running.")
         }
-
-        cameraStreamer.startCamera(CameraFacing.BACK)
-        Log.d("MonitorService", "Camera streamer started (back camera).")
     }
 
-    private fun stopMonitoring() {
-        Log.d("MonitorService", "Stopping monitoring.")
+    private fun stopForegroundService() {
+        cameraStreamer.stopCamera()
         if (mjpegServer.isRunning) {
             mjpegServer.stop()
             Log.d("MonitorService", "MJPEG Server stopped.")
@@ -206,7 +203,6 @@ class MonitorService : LifecycleService(), CommandListener {
             Log.d("MonitorService", "Audio WebSocket Server not running.")
         }
 
-        cameraStreamer.stopCamera()
         audioStreamer?.stop()
         audioStreamer = null
         isMicOn = false
@@ -256,7 +252,7 @@ class MonitorService : LifecycleService(), CommandListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopMonitoring()
+        stopForegroundService()
     }
 
     companion object {
