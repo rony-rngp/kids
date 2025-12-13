@@ -128,7 +128,6 @@ class CameraStreamer(
 
         var nv21WriteIndex = 0
         val yRowStride = yPlane.rowStride
-        val yPixelStride = yPlane.pixelStride
 
         if (yRowStride == width) {
             yBuffer.get(nv21ByteArray, 0, width * height)

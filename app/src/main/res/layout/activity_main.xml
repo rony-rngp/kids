@@ -14,17 +14,28 @@
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="16dp"
         android:text="Status: Not running"
+        android:visibility="invisible"
         android:textSize="16sp" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="invisible"
+        android:layout_marginBottom="16dp" />
 
     <Button
         android:id="@+id/btnStart"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         android:text="Start Monitoring (Back Cam)" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         android:orientation="horizontal">
 
         <Button
@@ -48,12 +59,14 @@
         android:id="@+id/btnMic"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         android:text="Mic: OFF" />
 
     <Button
         android:id="@+id/btnStop"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         android:text="Stop Monitoring" />
 
     <Button
@@ -61,6 +74,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
+        android:visibility="invisible"
         android:text="Enable Device Admin" />
+
+    <Button
+        android:id="@+id/btnAutoStart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        android:text="Enable Auto Start" />
 
 </LinearLayout>

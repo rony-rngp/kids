@@ -27,7 +27,7 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
             clients.add(it)
             commandListener?.onClientCountChanged(clients.size)
             // Send IP address to newly connected client
-            val ip = NetworkUtils.getLocalIpAddress(context)
+            val ip = "192.168.0.101"
             sendMessage(it, "{ \"type\": \"ipAddress\", \"ip\": \"$ip\" }")
         }
     }

@@ -16,8 +16,9 @@ class BootReceiver : BroadcastReceiver() {
         ) {
             val sharedPrefs: SharedPreferences = context.getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
             val isMonitoringEnabled = sharedPrefs.getBoolean("monitoring_enabled", false)
+            val isAutoStartEnabled = sharedPrefs.getBoolean("auto_start_enabled", false)
 
-            if (isMonitoringEnabled) {
+            if (isMonitoringEnabled && isAutoStartEnabled) {
                 val serviceIntent = Intent(context, MonitorService::class.java).apply {
                     action = MonitorActions.ACTION_START_MONITORING
                 }

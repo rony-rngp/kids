@@ -4,8 +4,9 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -19,6 +20,8 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private var bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+
+    private val scope = CoroutineScope(Job() + Dispatchers.IO)
 
     fun start() {
         if (isRecording) return
@@ -34,7 +37,7 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
         isRecording = true
         audioRecord?.startRecording()
 
-        GlobalScope.launch(Dispatchers.IO) {
+        scope.launch {
             val buffer = ByteArray(bufferSize)
             while (this.isActive && isRecording) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
@@ -51,5 +54,6 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
+        (scope.coroutineContext[Job] as Job).cancel()
     }
 }

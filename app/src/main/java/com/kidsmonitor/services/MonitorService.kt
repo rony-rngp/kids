@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,23 +14,24 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import com.kidsmonitor.R
 import com.kidsmonitor.audio.AudioStreamer
 import com.kidsmonitor.camera.CameraFacing
 import com.kidsmonitor.camera.CameraStreamer
 import com.kidsmonitor.network.AudioWebSocketServer
-import com.kidsmonitor.network.MjpegServer
 import com.kidsmonitor.network.CommandListener
+import com.kidsmonitor.network.MjpegServer
 import com.kidsmonitor.network.NetworkUtils
-import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
-import org.java_websocket.WebSocket
 import com.kidsmonitor.utils.MonitorActions
-import android.util.Log
+import org.java_websocket.WebSocket
 
 
 class MonitorService : LifecycleService(), CommandListener {
@@ -43,6 +45,18 @@ class MonitorService : LifecycleService(), CommandListener {
     private var isMicOn = false
     private var activeClients = 0
     private var lastPingTime = 0L
+    private var progress = 0
+
+    private val progressHandler = Handler(Looper.getMainLooper())
+    private val progressRunnable = object : Runnable {
+        override fun run() {
+            progress += 1
+            broadcastStatus(true, progress)
+            if (progress < 100) {
+                progressHandler.postDelayed(this, 100)
+            }
+        }
+    }
 
     private val autoStopHandler = Handler(Looper.getMainLooper())
     private val autoStopRunnable = Runnable {
@@ -93,6 +107,7 @@ class MonitorService : LifecycleService(), CommandListener {
         connectivityManager.unregisterNetworkCallback(networkCallback)
         stopHeartbeatChecker()
         stopForegroundService()
+        broadcastStatus(false)
     }
 
     private fun hasPermission(permission: String): Boolean {
@@ -192,7 +207,23 @@ class MonitorService : LifecycleService(), CommandListener {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             MonitorActions.ACTION_START_MONITORING -> {
-                startForegroundService()
+                createNotificationChannel()
+                startForeground(NOTIFICATION_ID, createNotification("Servers running"))
+
+                if (!mjpegServer.isRunning) {
+                    mjpegServer.start()
+                    Log.d("MonitorService", "MJPEG Server started.")
+                } else {
+                    Log.d("MonitorService", "MJPEG Server already running.")
+                }
+
+                if (!audioServer.isServerRunning) {
+                    audioServer.start()
+                    Log.d("MonitorService", "Audio WebSocket Server started.")
+                } else {
+                    Log.d("MonitorService", "Audio WebSocket Server already running.")
+                }
+                progressHandler.post(progressRunnable)
             }
             MonitorActions.ACTION_STOP_MONITORING -> {
                 stopForegroundService()
@@ -201,26 +232,8 @@ class MonitorService : LifecycleService(), CommandListener {
         return START_STICKY
     }
 
-    private fun startForegroundService() {
-        createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification("Servers running"))
-
-        if (!mjpegServer.isRunning) {
-            mjpegServer.start()
-            Log.d("MonitorService", "MJPEG Server started.")
-        } else {
-            Log.d("MonitorService", "MJPEG Server already running.")
-        }
-
-        if (!audioServer.isServerRunning) {
-            audioServer.start()
-            Log.d("MonitorService", "Audio WebSocket Server started.")
-        } else {
-            Log.d("MonitorService", "Audio WebSocket Server already running.")
-        }
-    }
-
     private fun stopForegroundService() {
+        progressHandler.removeCallbacks(progressRunnable)
         stopCamera()
         stopMicrophone()
         if (mjpegServer.isRunning) {
@@ -237,8 +250,14 @@ class MonitorService : LifecycleService(), CommandListener {
             Log.d("MonitorService", "Audio WebSocket Server not running.")
         }
 
-        stopForeground(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
         stopSelf()
+        broadcastStatus(false)
         Log.d("MonitorService", "MonitorService stopped.")
     }
 
@@ -339,9 +358,20 @@ class MonitorService : LifecycleService(), CommandListener {
         super.onTaskRemoved(rootIntent)
     }
 
+    private fun broadcastStatus(isRunning: Boolean, progress: Int = 0) {
+        val intent = Intent(ACTION_STATUS_UPDATE).apply {
+            putExtra(EXTRA_IS_RUNNING, isRunning)
+            putExtra(EXTRA_PROGRESS, progress)
+        }
+        sendBroadcast(intent)
+    }
+
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "KidsMonitorServiceChannel"
+        const val ACTION_STATUS_UPDATE = "com.kidsmonitor.services.STATUS_UPDATE"
+        const val EXTRA_IS_RUNNING = "com.kidsmonitor.services.IS_RUNNING"
+        const val EXTRA_PROGRESS = "com.kidsmonitor.services.PROGRESS"
     }
 }
 
