@@ -31,7 +31,14 @@ class CameraStreamer(
     private var nv21: ByteArray? = null
 
 
+    private var isStreaming = false
+
+    fun isStreaming(): Boolean {
+        return isStreaming
+    }
+
     fun startCamera(initialFacing: Int) {
+        isStreaming = true
         currentFacing = initialFacing
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
@@ -63,7 +70,7 @@ class CameraStreamer(
         val cameraSelector = CameraSelector.Builder().requireLensFacing(currentFacing).build()
 
         imageAnalysis = ImageAnalysis.Builder()
-            .setTargetResolution(Size(1280, 720))
+            .setTargetResolution(Size(640, 480))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
@@ -79,6 +86,7 @@ class CameraStreamer(
     }
 
     fun stopCamera() {
+        isStreaming = false
         val mainExecutor = ContextCompat.getMainExecutor(context)
         mainExecutor.execute {
             cameraProvider?.unbindAll()
@@ -102,7 +110,7 @@ class CameraStreamer(
         if (nv21 != null) {
             val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
             val out = ByteArrayOutputStream()
-            yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 95, out)
+            yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 80, out)
             return out.toByteArray()
         }
         return null

@@ -193,12 +193,12 @@
 
                 <h2><i class="fas fa-gamepad"></i> Controls</h2>
                 <div class="controls-grid">
-                    <button onclick="sendCommand('startMonitoring')"><i class="fas fa-play-circle"></i> Start Monitor</button>
-                    <button onclick="sendCommand('stopMonitoring')"><i class="fas fa-stop-circle"></i> Stop Monitor</button>
+                    <button id="startMonitoring" onclick="sendCommand('startMonitoring')"><i class="fas fa-play-circle"></i> Start Monitor</button>
+                    <button id="stopMonitoring" onclick="sendCommand('stopMonitoring')" style="display: none;"><i class="fas fa-stop-circle"></i> Stop Monitor</button>
                     <button onclick="sendCommand('switchCamera', { facing: 'front' })"><i class="fas fa-sync-alt"></i> Front Camera</button>
                     <button onclick="sendCommand('switchCamera', { facing: 'back' })"><i class="fas fa-sync-alt"></i> Back Camera</button>
-                    <button onclick="sendCommand('audioOn')"><i class="fas fa-microphone"></i> Start Audio</button>
-                    <button onclick="sendCommand('audioOff')"><i class="fas fa-microphone-slash"></i> Stop Audio</button>
+                    <button id="startAudio" onclick="sendCommand('audioOn')"><i class="fas fa-microphone"></i> Start Audio</button>
+                    <button id="stopAudio" onclick="sendCommand('audioOff')" style="display: none;"><i class="fas fa-microphone-slash"></i> Stop Audio</button>
                 </div>
             </section>
         </main>
@@ -211,6 +211,10 @@
         const controlsDiv = document.getElementById('controls');
         const videoFeedImg = document.getElementById('videoFeed');
         const serviceStatusDiv = document.getElementById('serviceStatus');
+        const startMonitoringBtn = document.getElementById('startMonitoring');
+        const stopMonitoringBtn = document.getElementById('stopMonitoring');
+        const startAudioBtn = document.getElementById('startAudio');
+        const stopAudioBtn = document.getElementById('stopAudio');
 
         let audioContext;
         let nextAudioTime = 0;
@@ -235,6 +239,10 @@
 
         function updateServiceStatus() {
             serviceStatusDiv.textContent = `Camera: ${isCameraOn ? 'ON' : 'OFF'}, Audio: ${isAudioOn ? 'ON' : 'OFF'}`;
+            startMonitoringBtn.style.display = isCameraOn ? 'none' : 'block';
+            stopMonitoringBtn.style.display = isCameraOn ? 'block' : 'none';
+            startAudioBtn.style.display = isAudioOn ? 'none' : 'block';
+            stopAudioBtn.style.display = isAudioOn ? 'block' : 'none';
         }
 
         function connectWebSocket() {
@@ -304,6 +312,10 @@
                             } else if (message.message.includes('Camera switched to')) {
                                 // Camera switch doesn't change overall monitoring state, just the camera used
                             }
+                            updateServiceStatus();
+                        } else if (message.isCameraOn !== undefined && message.isAudioOn !== undefined) {
+                            isCameraOn = message.isCameraOn;
+                            isAudioOn = message.isAudioOn;
                             updateServiceStatus();
                         } else if (message.type === 'error') {
                             updateStatus(`APK Error: ${message.message}`);

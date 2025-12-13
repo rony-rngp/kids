@@ -34,6 +34,8 @@ import com.kidsmonitor.utils.MonitorActions
 import org.java_websocket.WebSocket
 
 
+data class Status(val isCameraOn: Boolean, val isAudioOn: Boolean)
+
 class MonitorService : LifecycleService(), CommandListener {
 
     private val mjpegServer = MjpegServer(8081)
@@ -120,6 +122,7 @@ class MonitorService : LifecycleService(), CommandListener {
             scheduleAutoStop()
         } else {
             cancelAutoStop()
+            audioServer.broadcastString(Gson().toJson(Status(cameraStreamer.isStreaming(), isMicOn)))
         }
     }
 
@@ -188,6 +191,9 @@ class MonitorService : LifecycleService(), CommandListener {
                     Log.d("MonitorService", "Executing getIp command.")
                     val ip = NetworkUtils.getLocalIpAddress(this)
                     audioServer.sendMessage(client, "{ \"type\": \"ipAddress\", \"ip\": \"$ip\" }")
+                }
+                "get_status" -> {
+                    audioServer.sendMessage(client, Gson().toJson(Status(cameraStreamer.isStreaming(), isMicOn)))
                 }
                 else -> {
                     audioServer.sendMessage(client, "{ \"type\": \"error\", \"message\": \"Unknown command: ${command.type}\" }")

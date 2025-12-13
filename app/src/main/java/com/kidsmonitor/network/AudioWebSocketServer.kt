@@ -29,6 +29,7 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
             // Send IP address to newly connected client
             val ip = "192.168.0.101"
             sendMessage(it, "{ \"type\": \"ipAddress\", \"ip\": \"$ip\" }")
+            commandListener?.onCommandReceived(it, "{ \"type\": \"get_status\" }")
         }
     }
 
