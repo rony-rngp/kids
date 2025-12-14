@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.AutomaticGainControl
+import android.media.audiofx.NoiseSuppressor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,6 +18,9 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
 
     private var audioRecord: AudioRecord? = null
     @Volatile private var isRecording = false
+    private var noiseSuppressor: NoiseSuppressor? = null
+    private var acousticEchoCanceler: AcousticEchoCanceler? = null
+    private var automaticGainControl: AutomaticGainControl? = null
 
     private val sampleRate = 16000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -34,6 +40,21 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
             bufferSize
         )
 
+        if (NoiseSuppressor.isAvailable()) {
+            noiseSuppressor = NoiseSuppressor.create(audioRecord!!.audioSessionId)
+            noiseSuppressor?.enabled = true
+        }
+        
+        if (AcousticEchoCanceler.isAvailable()) {
+            acousticEchoCanceler = AcousticEchoCanceler.create(audioRecord!!.audioSessionId)
+            acousticEchoCanceler?.enabled = true
+        }
+
+        if (AutomaticGainControl.isAvailable()) {
+            automaticGainControl = AutomaticGainControl.create(audioRecord!!.audioSessionId)
+            automaticGainControl?.enabled = true
+        }
+
         isRecording = true
         audioRecord?.startRecording()
 
@@ -51,6 +72,12 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
     fun stop() {
         if (!isRecording) return
         isRecording = false
+        noiseSuppressor?.release()
+        noiseSuppressor = null
+        acousticEchoCanceler?.release()
+        acousticEchoCanceler = null
+        automaticGainControl?.release()
+        automaticGainControl = null
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
