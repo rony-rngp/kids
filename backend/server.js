@@ -68,7 +68,8 @@ wss.on('connection', (ws, req) => {
                 // Command from Viewer -> Camera
                 if (type === 'viewer' && deviceId && rooms[deviceId] && rooms[deviceId].camera) {
                     if (rooms[deviceId].camera.readyState === WebSocket.OPEN) {
-                        rooms[deviceId].camera.send(message); 
+                        // Ensure we send as TEXT, not Buffer/Binary
+                        rooms[deviceId].camera.send(message.toString()); 
                     }
                 }
             }
