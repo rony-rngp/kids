@@ -360,6 +360,7 @@ class MonitorService : LifecycleService(), CommandListener {
     override fun onTaskRemoved(rootIntent: Intent?) {
         val restartServiceIntent = Intent(applicationContext, this.javaClass)
         restartServiceIntent.setPackage(packageName)
+        restartServiceIntent.action = MonitorActions.ACTION_START_MONITORING
         startService(restartServiceIntent)
         super.onTaskRemoved(rootIntent)
     }

@@ -27,7 +27,7 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
             clients.add(it)
             commandListener?.onClientCountChanged(clients.size)
             // Send IP address to newly connected client
-            val ip = "192.168.0.101"
+            val ip = NetworkUtils.getLocalIpAddress(context)
             sendMessage(it, "{ \"type\": \"ipAddress\", \"ip\": \"$ip\" }")
             commandListener?.onCommandReceived(it, "{ \"type\": \"get_status\" }")
         }
@@ -38,7 +38,6 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
             clients.remove(it)
             commandListener?.onClientCountChanged(clients.size)
         }
-        _isRunning = false // Update running state
     }
 
     override fun onMessage(conn: WebSocket?, message: String?) {
@@ -51,7 +50,6 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
 
     override fun onError(conn: WebSocket?, ex: Exception?) {
         ex?.printStackTrace()
-        _isRunning = false // Update running state
     }
 
     override fun onStart() {
