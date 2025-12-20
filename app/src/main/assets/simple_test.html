@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple WS Test</title>
+</head>
+<body>
+    <button onclick="connect()">Connect</button>
+    <div id="log"></div>
+    <script>
+        function log(msg) {
+            document.getElementById('log').innerHTML += msg + '<br>';
+            console.log(msg);
+        }
+        function connect() {
+            log("Connecting...");
+            const ws = new WebSocket("wss://mkl-monitor.onrender.com/");
+            ws.binaryType = 'arraybuffer'; // TEST THIS
+            
+            ws.onopen = () => {
+                log("OPEN");
+                // ws.send(JSON.stringify({type: "ping"})); // Wait for welcome
+            };
+            ws.onmessage = (e) => {
+                log("MSG TYPE: " + typeof e.data);
+                if (typeof e.data === 'string') {
+                    log("MSG: " + e.data);
+                } else {
+                    log("MSG BINARY: " + e.data.byteLength);
+                }
+            };
+            ws.onclose = (e) => log("CLOSE: " + e.code);
+            ws.onerror = (e) => log("ERROR");
+        }
+    </script>
+</body>
+</html>

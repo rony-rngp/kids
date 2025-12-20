@@ -5,17 +5,44 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
+    android:gravity="center_horizontal"
+    android:background="#121212"
     tools:context=".MainActivity">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="MKL Camera Server"
+        android:textColor="#ffffff"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your Device ID"
+        android:textColor="#aaaaaa"
+        android:textSize="16sp"/>
+
+    <TextView
+        android:id="@+id/tvMyDeviceId"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loading..."
+        android:textColor="#007bff"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp"/>
 
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:text="Status: Not running"
-        android:visibility="invisible"
-        android:textSize="16sp" />
+        android:text="Status: Not Running"
+        android:textColor="#ffffff"
+        android:textSize="18sp"
+        android:layout_marginBottom="16dp"/>
 
     <ProgressBar
         android:id="@+id/progressBar"
@@ -23,66 +50,48 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="invisible"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="24dp"/>
 
     <Button
         android:id="@+id/btnStart"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Start Monitoring (Back Cam)" />
+        android:layout_height="60dp"
+        android:text="Start Monitoring Server"
+        android:backgroundTint="#007bff"
+        android:textColor="#ffffff"/>
 
     <LinearLayout
+        android:id="@+id/layoutCameraControls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:orientation="horizontal">
-
+        android:orientation="vertical"
+        android:visibility="gone">
+        
         <Button
-            android:id="@+id/btnFront"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="Switch to Front Camera" />
-
-        <Button
-            android:id="@+id/btnBack"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:layout_weight="1"
-            android:text="Switch to Back Camera" />
+            android:id="@+id/btnStop"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Stop Server"
+            android:backgroundTint="#dc3545"
+            android:textColor="#ffffff"/>
     </LinearLayout>
-
-    <Button
-        android:id="@+id/btnMic"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Mic: OFF" />
-
-    <Button
-        android:id="@+id/btnStop"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Stop Monitoring" />
 
     <Button
         android:id="@+id/btnAdmin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:visibility="invisible"
-        android:text="Enable Device Admin" />
+        android:layout_marginTop="24dp"
+        android:visibility="gone"
+        android:text="Enable Device Admin"
+        android:backgroundTint="#6c757d"/>
 
     <Button
         android:id="@+id/btnAutoStart"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         android:visibility="gone"
-        android:text="Enable Auto Start" />
+        android:text="Enable Auto Start"
+        android:backgroundTint="#6c757d"/>
 
 </LinearLayout>

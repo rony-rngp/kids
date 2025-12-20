@@ -21,6 +21,8 @@ import androidx.core.content.ContextCompat
 import com.kidsmonitor.databinding.ActivityMainBinding
 import com.kidsmonitor.receivers.MyDeviceAdminReceiver
 import com.kidsmonitor.services.MonitorService
+import com.kidsmonitor.utils.MonitorActions
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
     private lateinit var componentName: ComponentName
     private var isServiceRunning = false
+    private var myDeviceId: String = ""
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
@@ -58,12 +61,22 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         init()
-        binding.btnAdmin.setOnClickListener {
-            enableDeviceAdmin()
+
+        // Get ID (Logic matching MonitorService)
+        val sharedPrefs = getSharedPreferences("MKLMonitorPrefs", Context.MODE_PRIVATE)
+        val existingId = sharedPrefs.getString("deviceId", null)
+        if (existingId == null || existingId.length > 6) {
+            myDeviceId = (100000..999999).random().toString()
+            sharedPrefs.edit().putString("deviceId", myDeviceId).apply()
+        } else {
+            myDeviceId = existingId
         }
-        binding.btnAutoStart.setOnClickListener {
-            requestAutoStartPermission()
-        }
+        binding.tvMyDeviceId.text = myDeviceId
+
+        binding.btnStart.setOnClickListener { startMonitorService() }
+        binding.btnStop.setOnClickListener { stopMonitorService() }
+        binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
+        binding.btnAutoStart.setOnClickListener { requestAutoStartPermission() }
     }
 
     private fun init() {
@@ -86,60 +99,39 @@ class MainActivity : AppCompatActivity() {
     private fun updateUi() {
         if (isDeviceAdminEnabled()) {
             binding.btnAdmin.visibility = View.GONE
-            binding.tvStatus.visibility = View.VISIBLE
-            binding.progressBar.visibility = View.VISIBLE
             requestIgnoreBatteryOptimizations()
-            if (isFirstLaunch()) {
-                requestAutoStartPermission()
-            }
-            if (!isServiceRunning) {
-                startMonitorService()
+            if (isFirstLaunch()) requestAutoStartPermission()
+
+            if (isServiceRunning) {
+                binding.btnStart.visibility = View.GONE
+                binding.layoutCameraControls.visibility = View.VISIBLE
+                binding.tvStatus.text = "Status: Server Running"
+                binding.tvStatus.visibility = View.VISIBLE
+                binding.progressBar.visibility = View.VISIBLE
+            } else {
+                binding.btnStart.visibility = View.VISIBLE
+                binding.layoutCameraControls.visibility = View.GONE
+                binding.tvStatus.text = "Status: Ready to Start"
+                binding.tvStatus.visibility = View.VISIBLE
+                binding.progressBar.visibility = View.INVISIBLE
             }
         } else {
             binding.btnAdmin.visibility = View.VISIBLE
             binding.tvStatus.visibility = View.GONE
             binding.progressBar.visibility = View.GONE
-            if (checkPermissions()) {
-                enableDeviceAdmin()
-            } else {
-                requestPermissions()
-            }
+            binding.btnStart.visibility = View.GONE
+            if (!checkPermissions()) requestPermissions()
         }
+        
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
-        val autoStartEnabled = sharedPrefs.getBoolean("auto_start_enabled", false)
-        if (!autoStartEnabled) {
-            binding.btnAutoStart.visibility = View.VISIBLE
-        } else {
-            binding.btnAutoStart.visibility = View.GONE
-        }
-    }
-
-    private fun isDeviceAdminEnabled(): Boolean {
-        return devicePolicyManager.isAdminActive(componentName)
-    }
-
-    private fun enableDeviceAdmin() {
-        if (checkPermissions()) {
-            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
-                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Allow Kids Monitor admin so it cannot be easily uninstalled by your child.")
-            }
-            startActivity(intent)
-        } else {
-            requestPermissions()
-        }
+        binding.btnAutoStart.visibility = if (!sharedPrefs.getBoolean("auto_start_enabled", false)) View.VISIBLE else View.GONE
     }
 
     private fun startMonitorService() {
         if (checkPermissions()) {
-            val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
-            with(sharedPrefs.edit()) {
-                putBoolean("monitoring_enabled", true)
-                apply()
-            }
-
+            getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE).edit().putBoolean("monitoring_enabled", true).apply()
             val intent = Intent(this, MonitorService::class.java).apply {
-                action = com.kidsmonitor.utils.MonitorActions.ACTION_START_MONITORING
+                action = MonitorActions.ACTION_START_MONITORING
             }
             startService(intent)
         } else {
@@ -147,98 +139,76 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun checkPermissions(): Boolean {
-        return requiredPermissions.all {
-            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+    private fun stopMonitorService() {
+        getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE).edit().putBoolean("monitoring_enabled", false).apply()
+        val intent = Intent(this, MonitorService::class.java).apply {
+            action = MonitorActions.ACTION_STOP_MONITORING
+        }
+        startService(intent)
+    }
+
+    private fun isDeviceAdminEnabled() = devicePolicyManager.isAdminActive(componentName)
+
+    private fun enableDeviceAdmin() {
+        if (checkPermissions()) {
+            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Allow MKL admin so it cannot be easily uninstalled.")
+            }
+            startActivity(intent)
+        } else {
+            requestPermissions()
         }
     }
 
+    private fun checkPermissions() = requiredPermissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+
     private fun requestPermissions() {
-        ActivityCompat.requestPermissions(
-            this,
-            requiredPermissions,
-            PERMISSION_REQUEST_CODE
-        )
+        ActivityCompat.requestPermissions(this, requiredPermissions, PERMISSION_REQUEST_CODE)
     }
 
     private fun requestIgnoreBatteryOptimizations() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
                 try {
-                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                    intent.data = Uri.parse("package:$packageName")
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))
                     startActivity(intent)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                } catch (e: Exception) {}
             }
         }
     }
 
     private fun requestAutoStartPermission() {
+        // ... (Keep existing logic or simplify)
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
         try {
             val intent = Intent()
             val manufacturer = android.os.Build.MANUFACTURER
-            if ("xiaomi".equals(manufacturer, ignoreCase = true)) {
-                intent.component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
-            } else if ("oppo".equals(manufacturer, ignoreCase = true)) {
-                intent.component = ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")
-            } else if ("vivo".equals(manufacturer, ignoreCase = true)) {
-                intent.component = ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
-            } else if ("Letv".equals(manufacturer, ignoreCase = true)) {
-                intent.component = ComponentName("com.letv.android.letvsafe", "com.letv.android.letvsafe.AutobootManageActivity")
-            } else if ("Honor".equals(manufacturer, ignoreCase = true)) {
-                intent.component = ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity")
-            }
-
-            if (intent.resolveActivity(packageManager) != null) {
-                autoStartPermissionLauncher.launch(intent)
-            } else {
-                with(sharedPrefs.edit()) {
-                    putBoolean("auto_start_enabled", true)
-                    apply()
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        with(sharedPrefs.edit()) {
-            putBoolean("first_launch", false)
-            apply()
-        }
+            if ("xiaomi".equals(manufacturer, true)) intent.component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
+            else if ("oppo".equals(manufacturer, true)) intent.component = ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")
+            else if ("vivo".equals(manufacturer, true)) intent.component = ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
+            
+            if (intent.resolveActivity(packageManager) != null) autoStartPermissionLauncher.launch(intent)
+            else sharedPrefs.edit().putBoolean("auto_start_enabled", true).apply()
+        } catch (e: Exception) {}
+        sharedPrefs.edit().putBoolean("first_launch", false).apply()
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    private fun isFirstLaunch() = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE).getBoolean("first_launch", true)
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                // Permissions granted, the UI will be updated in onResume
-            }
+        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            // Permissions granted
         }
-    }
-
-    private fun isFirstLaunch(): Boolean {
-        val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
-        return sharedPrefs.getBoolean("first_launch", true)
     }
 
     private fun updateStatus(isRunning: Boolean, progress: Int) {
         if (isRunning) {
-            binding.tvStatus.text = "Status: Running ($progress%)"
+            binding.tvStatus.text = "Status: Server Running"
             binding.progressBar.progress = progress
-            val color = when (progress) {
-                in 0..25 -> R.color.red
-                in 26..50 -> R.color.yellow
-                in 51..75 -> R.color.blue
-                else -> R.color.green
-            }
-            binding.progressBar.progressTintList = ContextCompat.getColorStateList(this, color)
+            binding.progressBar.visibility = View.VISIBLE
         } else {
             binding.tvStatus.text = "Status: Not running"
             binding.progressBar.visibility = View.INVISIBLE
