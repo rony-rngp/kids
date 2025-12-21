@@ -306,8 +306,19 @@
     }
 
     function disconnect() {
+        if (isConnected) {
+            // Try to send stop command before closing, just in case
+            if (isMonitoring) stopMonitoring();
+            if (isAudioOn) sendCommand('audioOff');
+        }
+        
         if (ws) ws.close();
         clearInterval(heartbeatInterval);
+        
+        // Reset local state immediately
+        isMonitoring = false;
+        isAudioOn = false;
+        updateControlButtons();
     }
 
     function updateUI(connected) {
