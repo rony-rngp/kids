@@ -79,7 +79,26 @@ class MonitorService : LifecycleService() {
                 stopCamera()
                 stopMicrophone()
                 updateNotification("No Internet Connection")
+                // Close socket to trigger cleanup/reconnect logic
+                if (::wsClient.isInitialized && wsClient.isOpen) {
+                    try { wsClient.close() } catch (e: Exception) {}
+                }
             }
+        }
+        
+        override fun onAvailable(network: Network) {
+             // Reconnect to server when network returns
+             Handler(Looper.getMainLooper()).postDelayed({
+                 if (!::wsClient.isInitialized || !wsClient.isOpen) {
+                     Log.d("MonitorService", "Network available, reconnecting...")
+                     if (!::wsClient.isInitialized) initWebSocket()
+                     try { wsClient.connect() } catch (e: Exception) { 
+                         // Retry once more if failed
+                         if (!::wsClient.isInitialized) initWebSocket()
+                         try { wsClient.connect() } catch(e2: Exception) {}
+                     }
+                 }
+             }, 2000) // Small delay to let network settle
         }
     }
 

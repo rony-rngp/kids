@@ -168,7 +168,6 @@
 
         button.disconnect {
             background-color: var(--error-color);
-            display: none; /* Hidden by default */
         }
         
         button.disconnect:hover {
@@ -613,6 +612,7 @@
         
         if (isAudioOn) {
             btnAudio.innerHTML = '<i class="fas fa-microphone-slash"></i> Stop Audio';
+            btnAudio.classList.remove('disconnect'); 
             btnAudio.classList.add('disconnect'); // Make it red
         } else {
             btnAudio.innerHTML = '<i class="fas fa-microphone"></i> Start Audio';

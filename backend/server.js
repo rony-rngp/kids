@@ -134,7 +134,7 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
-        if (type === 'camera' && deviceId && rooms[deviceId]) {
+        if (type === 'camera' && deviceId && rooms[deviceId] && rooms[deviceId].camera === ws) {
             rooms[deviceId].camera = null;
             console.log(`Camera disconnected: ${deviceId}`);
             // Notify viewers
