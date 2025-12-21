@@ -67,6 +67,11 @@
             gap: 10px;
             margin-bottom: 16px;
         }
+        
+        .input-row {
+            display: flex;
+            gap: 8px;
+        }
 
         .input-group p {
             margin: 0;
@@ -84,11 +89,40 @@
             border-radius: 8px;
             box-sizing: border-box;
             transition: border-color 0.3s;
+            flex-grow: 1;
+        }
+        
+        #btnScan {
+            width: auto;
+            padding: 0 16px;
+            background-color: var(--secondary-color);
         }
 
         input[type="text"]:focus {
             outline: none;
             border-color: var(--primary-color);
+        }
+        
+        #deviceList {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        
+        .device-tag {
+            background-color: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .device-tag:hover {
+            border-color: var(--primary-color);
+            background-color: #3a3a3a;
         }
 
         .button-group {
@@ -175,7 +209,11 @@
             <h2><i class="fas fa-link"></i> Connection</h2>
             <div class="input-group">
                 <p>Enter the 6-Digit Device ID of the Android device.</p>
-                <input type="text" id="deviceId" placeholder="Enter Device ID">
+                <div class="input-row">
+                    <input type="text" id="deviceId" placeholder="Enter Device ID">
+                    <button id="btnScan" onclick="scanDevices()"><i class="fas fa-search"></i></button>
+                </div>
+                <div id="deviceList"></div>
                 <div class="button-group">
                     <button id="btnConnect" onclick="connect()"><i class="fas fa-plug"></i> Connect</button>
                     <button id="btnDisconnect" class="disconnect" onclick="disconnect()" disabled><i class="fas fa-times"></i> Disconnect</button>
@@ -226,6 +264,8 @@
     const btnStartMonitor = document.getElementById('btnStartMonitor');
     const btnStopMonitor = document.getElementById('btnStopMonitor');
     const btnAudio = document.getElementById('btnAudio');
+    const deviceListDiv = document.getElementById('deviceList');
+    const btnScan = document.getElementById('btnScan');
 
     let statusLog = [];
 
@@ -234,6 +274,57 @@
         statusLog.unshift(`[${timestamp}] ${message}`);
         if (statusLog.length > 7) statusLog.pop();
         statusDiv.innerHTML = statusLog.join('<br>');
+    }
+
+    function scanDevices() {
+        if (isConnected) {
+            alert("Please disconnect first to scan.");
+            return;
+        }
+        
+        btnScan.disabled = true;
+        btnScan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        deviceListDiv.innerHTML = '';
+        
+        const scanWs = new WebSocket(RELAY_SERVER_URL);
+        
+        scanWs.onopen = () => {
+            scanWs.send(JSON.stringify({ type: 'get_devices' }));
+        };
+        
+        scanWs.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'device_list') {
+                    if (msg.devices.length === 0) {
+                        deviceListDiv.innerHTML = '<span style="color: #666; font-size: 0.9em; padding: 5px;">No active devices found.</span>';
+                    } else {
+                        msg.devices.forEach(id => {
+                            const tag = document.createElement('div');
+                            tag.className = 'device-tag';
+                            tag.innerHTML = `<i class="fas fa-mobile-alt"></i> ${id}`;
+                            tag.onclick = () => selectDevice(id);
+                            deviceListDiv.appendChild(tag);
+                        });
+                    }
+                }
+            } catch(e) {}
+            scanWs.close();
+        };
+        
+        scanWs.onclose = () => {
+             btnScan.disabled = false;
+             btnScan.innerHTML = '<i class="fas fa-search"></i>';
+        };
+        
+        scanWs.onerror = () => {
+             btnScan.disabled = false;
+             btnScan.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        };
+    }
+    
+    function selectDevice(id) {
+        deviceIdInput.value = id;
     }
 
     function connect() {

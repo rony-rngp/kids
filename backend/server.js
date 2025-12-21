@@ -47,6 +47,15 @@ wss.on('connection', (ws, req) => {
                 rooms[deviceId].camera = ws;
                 console.log(`Camera registered: ${deviceId}`);
                 ws.send(JSON.stringify({ type: 'status', message: 'registered' }));
+                
+                // Notify waiting viewers that camera is online
+                if (rooms[deviceId].viewers && rooms[deviceId].viewers.length > 0) {
+                    rooms[deviceId].viewers.forEach(v => {
+                        if (v.readyState === WebSocket.OPEN) {
+                            v.send(JSON.stringify({ type: 'status', message: 'camera_online' }));
+                        }
+                    });
+                }
             } 
             else if (data.type === 'register_viewer') {
                 type = 'viewer';
@@ -63,6 +72,12 @@ wss.on('connection', (ws, req) => {
                 } else {
                     ws.send(JSON.stringify({ type: 'status', message: 'camera_offline' }));
                 }
+            }
+            else if (data.type === 'get_devices') {
+                const activeDevices = Object.keys(rooms).filter(id => 
+                    rooms[id].camera && rooms[id].camera.readyState === WebSocket.OPEN
+                );
+                ws.send(JSON.stringify({ type: 'device_list', devices: activeDevices }));
             }
             else if (data.type === 'command') {
                 // Command from Viewer -> Camera
