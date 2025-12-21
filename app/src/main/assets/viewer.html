@@ -191,16 +191,16 @@
         <div id="controls" class="controls">
              <h2><i class="fas fa-gamepad"></i> Controls</h2>
              <div class="control-row">
-                 <button onclick="sendCommand('startMonitoring')"><i class="fas fa-play"></i> Start Monitor</button>
-                 <button class="disconnect" onclick="sendCommand('stopMonitoring')"><i class="fas fa-stop"></i> Stop Monitor</button>
+                 <button id="btnStartMonitor" onclick="startMonitoring()"><i class="fas fa-play"></i> Start Monitor</button>
+                 <button id="btnStopMonitor" class="disconnect" onclick="stopMonitoring()" style="display: none;"><i class="fas fa-stop"></i> Stop Monitor</button>
              </div>
              <div class="control-row">
                  <button onclick="toggleCamera()"><i class="fas fa-sync-alt"></i> Switch Camera</button>
-                 <button onclick="toggleAudio()"><i class="fas fa-microphone"></i> Toggle Audio</button>
+                 <button id="btnAudio" onclick="toggleAudio()"><i class="fas fa-microphone"></i> Start Audio</button>
              </div>
         </div>
 
-        <img id="videoFeed" alt="Video Stream">
+        <img id="videoFeed" alt="Video Stream" style="width: 100%; border-radius: 8px; border: 1px solid #3a3a3a; display: none; margin-top: 16px;">
     </main>
 </div>
 
@@ -212,22 +212,29 @@
     let audioCtx;
     let nextStartTime = 0;
     let isAudioOn = false;
+    let isMonitoring = false;
     let audioQueue = [];
+    let frameCount = 0;
     
-    // UI Elements
+    // UI Elements - Declared BEFORE use
     const statusDiv = document.getElementById('status');
     const btnConnect = document.getElementById('btnConnect');
     const btnDisconnect = document.getElementById('btnDisconnect');
     const videoFeed = document.getElementById('videoFeed');
     const controlsDiv = document.getElementById('controls');
     const deviceIdInput = document.getElementById('deviceId');
+    const btnStartMonitor = document.getElementById('btnStartMonitor');
+    const btnStopMonitor = document.getElementById('btnStopMonitor');
+    const btnAudio = document.getElementById('btnAudio');
+
+    let statusLog = [];
 
     function log(message) {
         const timestamp = new Date().toLocaleTimeString();
-        statusDiv.innerHTML = `[${timestamp}] ${message}<br>` + statusDiv.innerHTML;
+        statusLog.unshift(`[${timestamp}] ${message}`);
+        if (statusLog.length > 7) statusLog.pop();
+        statusDiv.innerHTML = statusLog.join('<br>');
     }
-
-        let heartbeatInterval;
 
     function connect() {
         deviceId = deviceIdInput.value.trim();
@@ -287,6 +294,8 @@
             isConnected = false;
             clearInterval(heartbeatInterval);
             updateUI(false);
+            isMonitoring = false;
+            updateControlButtons();
         };
 
         ws.onerror = (e) => {
@@ -307,10 +316,8 @@
         deviceIdInput.disabled = connected;
         if (connected) {
             controlsDiv.style.display = 'block'; 
-            videoFeed.style.display = 'block';
         } else {
             controlsDiv.style.display = 'none';
-            videoFeed.style.display = 'none';
         }
     }
 
@@ -326,6 +333,10 @@
                     log("Server: Camera reported OFFLINE (Commands may not work).");
                 } else {
                     log(`Server: ${msg.message}`);
+                    if (msg.message === 'Monitoring started') { isMonitoring = true; updateControlButtons(); }
+                    if (msg.message === 'Monitoring stopped') { isMonitoring = false; updateControlButtons(); }
+                    if (msg.message === 'Audio started') { isAudioOn = true; updateControlButtons(); }
+                    if (msg.message === 'Audio stopped') { isAudioOn = false; updateControlButtons(); }
                 }
             }
         } catch (e) {
@@ -345,12 +356,15 @@
 
     function processArrayBuffer(buffer) {
         const bytes = new Uint8Array(buffer);
+        // Basic JPEG check: SOI (FF D8)
         if (bytes.length > 1000 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
+            frameCount++;
+            if (frameCount % 100 === 0) console.log(`Rx Video Frame #${frameCount} (${bytes.length} bytes)`);
+            
             const blob = new Blob([buffer], { type: 'image/jpeg' });
             const url = URL.createObjectURL(blob);
             videoFeed.onload = () => URL.revokeObjectURL(url);
             videoFeed.src = url;
-            videoFeed.style.display = 'block';
         } else {
             playAudioChunk(buffer);
         }
@@ -369,6 +383,23 @@
         log(`Sent command: ${type}`);
     }
     
+    function startMonitoring() {
+        sendCommand('startMonitoring');
+        isMonitoring = true;
+        updateControlButtons();
+    }
+
+    function stopMonitoring() {
+        sendCommand('stopMonitoring');
+        isMonitoring = false;
+        // Also stop audio if monitoring stops
+        if (isAudioOn) {
+            isAudioOn = false;
+            sendCommand('audioOff');
+        }
+        updateControlButtons();
+    }
+
     function toggleAudio() {
         if (isAudioOn) {
             sendCommand('audioOff');
@@ -378,6 +409,28 @@
             sendCommand('audioOn');
             isAudioOn = true;
             log("Audio ON command sent");
+        }
+        updateControlButtons();
+    }
+    
+    function updateControlButtons() {
+        if (isMonitoring) {
+            btnStartMonitor.style.display = 'none';
+            btnStopMonitor.style.display = 'block';
+            videoFeed.style.display = 'block';
+        } else {
+            btnStartMonitor.style.display = 'block';
+            btnStopMonitor.style.display = 'none';
+            videoFeed.style.display = 'none';
+            videoFeed.src = "";
+        }
+        
+        if (isAudioOn) {
+            btnAudio.innerHTML = '<i class="fas fa-microphone-slash"></i> Stop Audio';
+            btnAudio.classList.add('disconnect'); // Make it red
+        } else {
+            btnAudio.innerHTML = '<i class="fas fa-microphone"></i> Start Audio';
+            btnAudio.classList.remove('disconnect');
         }
     }
 
