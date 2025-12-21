@@ -19,7 +19,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.kidsmonitor.R
 import com.kidsmonitor.audio.AudioStreamer
@@ -34,19 +34,35 @@ import java.util.UUID
 
 data class JsonCommand(val type: String, val data: Map<String, String>?)
 data class Status(val isCameraOn: Boolean, val isAudioOn: Boolean)
+data class Command(val type: String, val data: Map<String, String>?)
 
 class MonitorService : LifecycleService() {
 
     private lateinit var wsClient: WebSocketClient
     private lateinit var deviceId: String
-    private val REMOTE_SERVER_URL = "wss://mkl-monitor.onrender.com/" // Secure WSS
+    private val REMOTE_SERVER_URL = "wss://mkl-monitor.onrender.com/"
 
     private lateinit var cameraStreamer: CameraStreamer
     private var audioStreamer: AudioStreamer? = null
     private var isMicOn = false
     private var progress = 0
+    private var lastPingTime = 0L
 
     private val progressHandler = Handler(Looper.getMainLooper())
+    private val heartbeatHandler = Handler(Looper.getMainLooper())
+    
+    private val heartbeatRunnable = object : Runnable {
+        override fun run() {
+            if ((cameraStreamer.isStreaming() || isMicOn) && System.currentTimeMillis() - lastPingTime > 15000) {
+                Log.d("MonitorService", "Heartbeat timeout. Stopping monitoring.")
+                stopCamera()
+                stopMicrophone()
+                sendStatus("Monitoring stopped (Timeout)")
+            }
+            heartbeatHandler.postDelayed(this, 5000)
+        }
+    }
+
     private val progressRunnable = object : Runnable {
         override fun run() {
             progress += 1
@@ -70,7 +86,9 @@ class MonitorService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         
-        // Get or Generate Device ID
+        lastPingTime = System.currentTimeMillis() // Initialize
+        heartbeatHandler.post(heartbeatRunnable) // Start heartbeat check
+
         val sharedPrefs = getSharedPreferences("MKLMonitorPrefs", Context.MODE_PRIVATE)
         val existingId = sharedPrefs.getString("deviceId", null)
         if (existingId == null || existingId.length > 6) {
@@ -81,17 +99,16 @@ class MonitorService : LifecycleService() {
         }
         Log.d("MonitorService", "Device ID: $deviceId")
 
-        // Initialize Camera Streamer
-        cameraStreamer = CameraStreamer(this, this) { frame ->
+        cameraStreamer = CameraStreamer(this, this, { frame ->
             if (::wsClient.isInitialized && wsClient.isOpen) {
                 wsClient.send(frame)
             }
-        }
+        }, { error ->
+            sendStatus("Error: $error")
+        })
 
-        // Initialize WebSocket Client
         initWebSocket()
 
-        // Network Callback
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkRequest = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -104,10 +121,9 @@ class MonitorService : LifecycleService() {
         wsClient = object : WebSocketClient(URI(REMOTE_SERVER_URL)) {
             override fun onOpen(handshakedata: ServerHandshake?) {
                 Log.d("MonitorService", "Connected to relay server.")
-                // Register as camera (FLAT JSON)
                 val registerMap = mapOf("type" to "register_camera", "deviceId" to deviceId)
                 send(Gson().toJson(registerMap))
-                updateNotification("Online. Device ID: $deviceId")
+                updateNotification("Online. ID: $deviceId")
             }
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
@@ -124,11 +140,39 @@ class MonitorService : LifecycleService() {
 
             override fun onMessage(message: String?) {
                 message?.let {
+                    // sendStatus("Debug: Raw Message Received") // Too noisy
                     try {
-                        val command = Gson().fromJson(message, Command::class.java)
-                        handleRemoteCommand(command)
+                        val jsonElement = JsonParser.parseString(message)
+                        if (jsonElement.isJsonObject) {
+                            val jsonObject = jsonElement.asJsonObject
+                            val type = jsonObject.get("type").asString
+                            
+                            if (type == "command") {
+                                sendStatus("Debug: Processing Command Wrapper")
+                                val dataObj = jsonObject.getAsJsonObject("data")
+                                val innerType = dataObj.get("type").asString
+                                
+                                // Safely get inner data string
+                                val innerDataElement = dataObj.get("data")
+                                val innerDataStr = if (innerDataElement != null && !innerDataElement.isJsonNull) {
+                                    innerDataElement.asString
+                                } else { "{}" }
+                                
+                                val innerData: Map<String, String> = try {
+                                    val typeToken = object : TypeToken<Map<String, String>>() {}.type
+                                    Gson().fromJson(innerDataStr, typeToken)
+                                } catch (e: Exception) { emptyMap() }
+                                
+                                handleRemoteCommand(Command(innerType, innerData))
+                            } else {
+                                // Direct command (if any)
+                                val command = Gson().fromJson(message, Command::class.java)
+                                handleRemoteCommand(command)
+                            }
+                        }
                     } catch (e: Exception) {
                         Log.e("MonitorService", "JSON Error: ${e.message}")
+                        sendStatus("Debug: JSON Error - ${e.message}")
                     }
                 }
             }
@@ -138,25 +182,18 @@ class MonitorService : LifecycleService() {
     }
 
     private fun handleRemoteCommand(command: Command) {
-        // Unwrap nested commands if necessary
-        if (command.type == "command") {
-            val innerType = command.data?.get("type")
-            val innerDataStr = command.data?.get("data")
-            if (innerType != null) {
-                val innerData = if (innerDataStr != null) {
-                    try {
-                        val type = object : TypeToken<Map<String, String>>() {}.type
-                        Gson().fromJson<Map<String, String>>(innerDataStr, type)
-                    } catch (e: Exception) { emptyMap() }
-                } else { emptyMap() }
-                handleRemoteCommand(Command(innerType, innerData))
-            }
-            return
-        }
-
+        lastPingTime = System.currentTimeMillis() // Update heartbeat on ANY command
+        
         when (command.type) {
+            "ping" -> {
+                // Heartbeat received, time already updated above
+            }
             "startMonitoring" -> {
-                if (!hasPermission(Manifest.permission.CAMERA)) return
+                Log.d("MonitorService", "Command: Start Monitoring")
+                if (!hasPermission(Manifest.permission.CAMERA)) {
+                    sendStatus("Error: Camera Permission Missing")
+                    return
+                }
                 startCamera()
                 sendStatus("Monitoring started")
             }
@@ -166,13 +203,19 @@ class MonitorService : LifecycleService() {
                 sendStatus("Monitoring stopped")
             }
             "switchCamera" -> {
-                if (!hasPermission(Manifest.permission.CAMERA)) return
+                if (!hasPermission(Manifest.permission.CAMERA)) {
+                    sendStatus("Error: Camera Permission Missing")
+                    return
+                }
                 val facing = if (command.data?.get("facing") == "front") CameraFacing.FRONT else CameraFacing.BACK
                 cameraStreamer.switchCamera(facing)
                 sendStatus("Camera switched")
             }
             "audioOn" -> {
-                if (!hasPermission(Manifest.permission.RECORD_AUDIO)) return
+                if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
+                    sendStatus("Error: Audio Permission Missing")
+                    return
+                }
                 startMicrophone()
                 sendStatus("Audio started")
             }
@@ -186,13 +229,13 @@ class MonitorService : LifecycleService() {
                     "isCameraOn" to status.isCameraOn.toString(),
                     "isAudioOn" to status.isAudioOn.toString()
                 ))
-                if (wsClient.isOpen) wsClient.send(Gson().toJson(statusMsg))
+                if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(statusMsg))
             }
         }
     }
     
     private fun sendStatus(msg: String) {
-        if (wsClient.isOpen) {
+        if (::wsClient.isInitialized && wsClient.isOpen) {
             wsClient.send(Gson().toJson(JsonCommand("status", mapOf("message" to msg))))
         }
     }
@@ -227,7 +270,7 @@ class MonitorService : LifecycleService() {
     }
 
     private fun startCamera() {
-        if (wsClient.isOpen) {
+        if (::wsClient.isInitialized && wsClient.isOpen) {
             cameraStreamer.startCamera(CameraFacing.BACK)
             updateNotification("Monitoring Active. ID: $deviceId")
         }
@@ -239,10 +282,10 @@ class MonitorService : LifecycleService() {
     }
 
     private fun startMicrophone() {
-        if (wsClient.isOpen && !isMicOn) {
+        if (::wsClient.isInitialized && wsClient.isOpen && !isMicOn) {
             isMicOn = true
             audioStreamer = AudioStreamer { chunk ->
-                if (wsClient.isOpen) wsClient.send(chunk)
+                if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(chunk)
             }
             audioStreamer?.start()
         }
@@ -318,5 +361,3 @@ class MonitorService : LifecycleService() {
         const val EXTRA_PROGRESS = "com.kidsmonitor.services.PROGRESS"
     }
 }
-
-data class Command(val type: String, val data: Map<String, String>?)

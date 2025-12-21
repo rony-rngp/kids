@@ -145,281 +145,270 @@
             display: none; /* Hidden by default */
             border-radius: 8px;
         }
-
-        #serviceStatus {
-            padding: 12px;
-            background-color: #2a2a2a;
-            border-radius: 8px;
-            font-weight: bold;
+        
+        .controls {
+            display: none; /* Hidden until connected */
+            margin-top: 20px;
         }
-
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
+        
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
         }
-
+        
+        .control-row button {
+            flex: 1;
+            margin: 0 5px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>Remote Kids Monitor Control</header>
-        <main>
-            <section class="section">
-                <h2><i class="fas fa-network-wired"></i> Connection</h2>
-                <div class="input-group">
-                    <p>Enter the IP address of the monitored Android device (e.g., 192.168.1.100).</p>
-                    <input type="text" id="ipAddress" placeholder="Enter Phone IP Address">
-                    <div class="button-group">
-                        <button onclick="connectWebSocket()"><i class="fas fa-plug"></i> Connect</button>
-                        <button onclick="disconnectWebSocket()" class="disconnect"><i class="fas fa-unplug"></i> Disconnect</button>
-                    </div>
+
+<div class="container">
+    <header>
+        <i class="fas fa-video"></i> Remote Kids Monitor
+    </header>
+
+    <main>
+        <div class="section">
+            <h2><i class="fas fa-link"></i> Connection</h2>
+            <div class="input-group">
+                <p>Enter the 6-Digit Device ID of the Android device.</p>
+                <input type="text" id="deviceId" placeholder="Enter Device ID">
+                <div class="button-group">
+                    <button id="btnConnect" onclick="connect()"><i class="fas fa-plug"></i> Connect</button>
+                    <button id="btnDisconnect" class="disconnect" onclick="disconnect()" disabled><i class="fas fa-times"></i> Disconnect</button>
                 </div>
-            </section>
+            </div>
+        </div>
 
-            <section class="section">
-                <h2><i class="fas fa-info-circle"></i> Status</h2>
-                <div id="status">Not Connected</div>
-            </section>
-            
-            <section class="section">
-                <h2><i class="fas fa-cogs"></i> Running Services</h2>
-                <div id="serviceStatus">Camera: OFF, Audio: OFF</div>
-            </section>
+        <div class="section">
+            <h2><i class="fas fa-info-circle"></i> Status</h2>
+            <div id="status">Not Connected</div>
+        </div>
+        
+        <div id="controls" class="controls">
+             <h2><i class="fas fa-gamepad"></i> Controls</h2>
+             <div class="control-row">
+                 <button onclick="sendCommand('startMonitoring')"><i class="fas fa-play"></i> Start Monitor</button>
+                 <button class="disconnect" onclick="sendCommand('stopMonitoring')"><i class="fas fa-stop"></i> Stop Monitor</button>
+             </div>
+             <div class="control-row">
+                 <button onclick="toggleCamera()"><i class="fas fa-sync-alt"></i> Switch Camera</button>
+                 <button onclick="toggleAudio()"><i class="fas fa-microphone"></i> Toggle Audio</button>
+             </div>
+        </div>
 
-            <section class="section" id="controls" style="display: none;">
-                <h2><i class="fas fa-video"></i> Live Video Feed</h2>
-                <img id="videoFeed" src="" alt="Live Video Stream">
+        <img id="videoFeed" alt="Video Stream">
+    </main>
+</div>
 
-                <h2><i class="fas fa-gamepad"></i> Controls</h2>
-                <div class="controls-grid">
-                    <button id="startMonitoring" onclick="sendCommand('startMonitoring')"><i class="fas fa-play-circle"></i> Start Monitor</button>
-                    <button id="stopMonitoring" onclick="sendCommand('stopMonitoring')" style="display: none;"><i class="fas fa-stop-circle"></i> Stop Monitor</button>
-                    <button onclick="sendCommand('switchCamera', { facing: 'front' })"><i class="fas fa-sync-alt"></i> Front Camera</button>
-                    <button onclick="sendCommand('switchCamera', { facing: 'back' })"><i class="fas fa-sync-alt"></i> Back Camera</button>
-                    <button id="startAudio" onclick="sendCommand('audioOn')"><i class="fas fa-microphone"></i> Start Audio</button>
-                    <button id="stopAudio" onclick="sendCommand('audioOff')" style="display: none;"><i class="fas fa-microphone-slash"></i> Stop Audio</button>
-                </div>
-            </section>
-        </main>
-    </div>
+<script>
+    const RELAY_SERVER_URL = "wss://mkl-monitor.onrender.com/";
+    let ws;
+    let isConnected = false;
+    let deviceId = "";
+    let audioCtx;
+    let nextStartTime = 0;
+    let isAudioOn = false;
+    
+    // UI Elements
+    const statusDiv = document.getElementById('status');
+    const btnConnect = document.getElementById('btnConnect');
+    const btnDisconnect = document.getElementById('btnDisconnect');
+    const videoFeed = document.getElementById('videoFeed');
+    const controlsDiv = document.getElementById('controls');
+    const deviceIdInput = document.getElementById('deviceId');
 
-    <script>
-        let ws;
-        const statusDiv = document.getElementById('status');
-        const ipAddressInput = document.getElementById('ipAddress');
-        const controlsDiv = document.getElementById('controls');
-        const videoFeedImg = document.getElementById('videoFeed');
-        const serviceStatusDiv = document.getElementById('serviceStatus');
-        const startMonitoringBtn = document.getElementById('startMonitoring');
-        const stopMonitoringBtn = document.getElementById('stopMonitoring');
-        const startAudioBtn = document.getElementById('startAudio');
-        const stopAudioBtn = document.getElementById('stopAudio');
+    function log(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        statusDiv.innerHTML = `[${timestamp}] ${message}<br>` + statusDiv.innerHTML;
+    }
 
-        let audioContext;
-        let nextAudioTime = 0;
-        let isCameraOn = false;
-        let isAudioOn = false;
         let heartbeatInterval;
-        const statusLogs = []; // Array to store recent status messages
 
-        function updateStatus(message, append = true) {
-            const now = new Date();
-            const formattedMessage = `<strong>[${now.toLocaleTimeString()}]</strong> ${message}`;
-            statusLogs.push(formattedMessage); // Add new message to the end
+    function connect() {
+        deviceId = deviceIdInput.value.trim();
+        if (!deviceId) {
+            alert("Please enter a Device ID");
+            return;
+        }
 
-            // Keep only the last 5 messages
-            if (statusLogs.length > 5) {
-                statusLogs.shift(); // Remove the oldest message from the beginning
-            }
+        log("Connecting to Relay Server...");
+        
+        ws = new WebSocket(RELAY_SERVER_URL);
+        ws.binaryType = 'arraybuffer'; 
+
+        ws.onopen = () => {
+            log("Connected to Server.");
+            isConnected = true;
+            updateUI(true); // Show controls IMMEDIATELY
             
-            // Display messages in reverse order (newest first)
-            statusDiv.innerHTML = statusLogs.slice().reverse().join('<br>');
-        }
-
-        function updateServiceStatus() {
-            serviceStatusDiv.textContent = `Camera: ${isCameraOn ? 'ON' : 'OFF'}, Audio: ${isAudioOn ? 'ON' : 'OFF'}`;
-            startMonitoringBtn.style.display = isCameraOn ? 'none' : 'block';
-            stopMonitoringBtn.style.display = isCameraOn ? 'block' : 'none';
-            startAudioBtn.style.display = isAudioOn ? 'none' : 'block';
-            stopAudioBtn.style.display = isAudioOn ? 'block' : 'none';
-        }
-
-        function connectWebSocket() {
-            const ip = ipAddressInput.value;
-            if (!ip) {
-                updateStatus('Error: Please enter the phone\'s IP address.');
-                return;
-            }
-            const wsUrl = `ws://${ip}:8082`;
-
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                updateStatus('Already connected.');
-                return;
-            }
-
+            // Register as viewer
+            const registerMsg = {
+                type: 'register_viewer',
+                deviceId: deviceId
+            };
+            ws.send(JSON.stringify(registerMsg));
+            
+            // Start Heartbeat
+            heartbeatInterval = setInterval(() => {
+                if (isConnected) sendCommand('ping');
+            }, 3000);
+            
+            // Init Audio
             try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                nextAudioTime = audioContext.currentTime;
-            } catch (e) {
-                console.error("Web Audio API is not supported in this browser.", e);
-                updateStatus('Web Audio API not supported.');
-                return;
-            }
-
-            updateStatus('Attempting to connect to WebSocket...');
-            ws = new WebSocket(wsUrl);
-            ws.binaryType = 'arraybuffer';
-
-            ws.onopen = () => {
-                updateStatus('WebSocket Connected. Controls enabled.', false);
-                controlsDiv.style.display = 'block';
-                isCameraOn = false;
-                isAudioOn = false;
-                updateServiceStatus();
-                heartbeatInterval = setInterval(() => {
-                    sendCommand('ping');
-                }, 5000);
-                // APK will send IP automatically on connection
-            };
-
-            ws.onmessage = (event) => {
-                if (event.data instanceof ArrayBuffer) {
-                    const rawData = new Int16Array(event.data);
-                    const floatData = new Float32Array(rawData.length);
-                    for (let i = 0; i < rawData.length; i++) {
-                        floatData[i] = rawData[i] / 32768.0;
-                    }
-                    
-                    const audioBuffer = audioContext.createBuffer(1, floatData.length, 16000);
-                    audioBuffer.copyToChannel(floatData, 0);
-                    
-                    playBuffer(audioBuffer);
-                } else {
-                    try {
-                        const message = JSON.parse(event.data);
-                        if (message.type === 'status') {
-                            updateStatus(`APK Status: ${message.message}`);
-                            if (message.message.includes('Monitoring started')) {
-                                isCameraOn = true;
-                            } else if (message.message.includes('Monitoring stopped')) {
-                                isCameraOn = false;
-                                isAudioOn = false; // Audio also stops when monitoring stops
-                            } else if (message.message.includes('Audio monitoring started')) {
-                                isAudioOn = true;
-                            } else if (message.message.includes('Audio monitoring stopped')) {
-                                isAudioOn = false;
-                            } else if (message.message.includes('Camera switched to')) {
-                                // Camera switch doesn't change overall monitoring state, just the camera used
-                            }
-                            updateServiceStatus();
-                        } else if (message.isCameraOn !== undefined && message.isAudioOn !== undefined) {
-                            isCameraOn = message.isCameraOn;
-                            isAudioOn = message.isAudioOn;
-                            updateServiceStatus();
-                        } else if (message.type === 'error') {
-                            updateStatus(`APK Error: ${message.message}`);
-                        } else if (message.type === 'ipAddress') {
-                            ipAddressInput.value = message.ip; // Auto-fill if not already set by user
-                            updateStatus(`APK IP: ${message.ip}`);
-                        }
-                        else {
-                            updateStatus(`Received: ${event.data}`);
-                        }
-                    } catch (e) {
-                        updateStatus(`Received (non-JSON text): ${event.data}`);
-                    }
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
                 }
-            };
-
-            ws.onclose = () => {
-                updateStatus('WebSocket Disconnected. Controls disabled.', false);
-                controlsDiv.style.display = 'none';
-                videoFeedImg.style.display = 'none';
-                videoFeedImg.src = '';
-                if (audioContext && audioContext.state !== 'closed') {
-                    audioContext.close();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
                 }
-                isCameraOn = false;
-                isAudioOn = false;
-                updateServiceStatus();
-                clearInterval(heartbeatInterval);
-            };
-
-            ws.onerror = (error) => {
-                updateStatus(`WebSocket Error: ${error.message || 'Unknown error'}`, false);
-                console.error('WebSocket Error:', error);
-            };
-        }
-
-        function playBuffer(buffer) {
-            if (!audioContext || audioContext.state === 'closed') return;
-            const source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
-            
-            const currentTime = audioContext.currentTime;
-            if (currentTime < nextAudioTime) {
-                source.start(nextAudioTime);
-                nextAudioTime += buffer.duration;
-            } else {
-                source.start();
-                nextAudioTime = currentTime + buffer.duration;
+            } catch(e) {
+                console.warn("Audio init failed", e);
             }
-        }
-
-        function disconnectWebSocket() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.close();
-            } else {
-                updateStatus('Not connected.', false);
-            }
-            clearInterval(heartbeatInterval);
-        }
-
-        function sendCommand(commandType, data = {}) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                const command = {
-                    type: commandType,
-                    data: data
-                };
-                ws.send(JSON.stringify(command));
-                updateStatus(`Sent command: ${commandType}`);
-
-                if (commandType === 'startMonitoring') {
-                    const ip = ipAddressInput.value;
-                    if (ip) {
-                        videoFeedImg.src = `http://${ip}:8081`;
-                        videoFeedImg.style.display = 'block';
-                    } else {
-                        updateStatus('Cannot start video feed: IP address not set.');
-                    }
-                } else if (commandType === 'stopMonitoring') {
-                    videoFeedImg.style.display = 'none';
-                    videoFeedImg.src = '';
-                } else if (commandType === 'audioOn') {
-                    isAudioOn = true;
-                } else if (commandType === 'audioOff') {
-                    isAudioOn = false;
-                }
-                updateServiceStatus();
-
-            } else {
-                updateStatus('Not connected to WebSocket. Please connect first.');
-            }
-        }
-
-        // Auto-fill IP from local storage or prompt
-        window.onload = () => {
-            const savedIp = localStorage.getItem('monitorIpAddress');
-            if (savedIp) {
-                ipAddressInput.value = savedIp;
-            }
-
-            ipAddressInput.addEventListener('change', () => {
-                localStorage.setItem('monitorIpAddress', ipAddressInput.value);
-            });
         };
-    </script>
+
+        ws.onmessage = (event) => {
+            const data = event.data;
+            
+            if (typeof data === 'string') {
+                handleJsonData(data);
+            } else if (data instanceof ArrayBuffer || data instanceof Blob) {
+                handleBinaryData(data);
+            }
+        };
+
+        ws.onclose = (e) => {
+            log(`Disconnected (Code: ${e.code})`);
+            isConnected = false;
+            clearInterval(heartbeatInterval);
+            updateUI(false);
+        };
+
+        ws.onerror = (e) => {
+            log("Connection Error");
+            console.error(e);
+            clearInterval(heartbeatInterval);
+        };
+    }
+
+    function disconnect() {
+        if (ws) ws.close();
+        clearInterval(heartbeatInterval);
+    }
+
+    function updateUI(connected) {
+        btnConnect.disabled = connected;
+        btnDisconnect.disabled = !connected;
+        deviceIdInput.disabled = connected;
+        if (connected) {
+            controlsDiv.style.display = 'block'; 
+            videoFeed.style.display = 'block';
+        } else {
+            controlsDiv.style.display = 'none';
+            videoFeed.style.display = 'none';
+        }
+    }
+
+    function handleJsonData(jsonString) {
+        try {
+            const msg = JSON.parse(jsonString);
+            console.log("RX:", msg);
+            
+            if (msg.type === 'status') {
+                if (msg.message === 'camera_online') {
+                    log("Server: Camera reported ONLINE.");
+                } else if (msg.message === 'camera_offline') {
+                    log("Server: Camera reported OFFLINE (Commands may not work).");
+                } else {
+                    log(`Server: ${msg.message}`);
+                }
+            }
+        } catch (e) {
+            console.error("Parse Error", e);
+        }
+    }
+
+    function handleBinaryData(data) {
+        if (data instanceof Blob) {
+             const reader = new FileReader();
+             reader.onload = function() { processArrayBuffer(this.result); };
+             reader.readAsArrayBuffer(data);
+        } else {
+             processArrayBuffer(data);
+        }
+    }
+
+    function processArrayBuffer(buffer) {
+        const bytes = new Uint8Array(buffer);
+        if (bytes.length > 1000 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
+            const blob = new Blob([buffer], { type: 'image/jpeg' });
+            const url = URL.createObjectURL(blob);
+            videoFeed.onload = () => URL.revokeObjectURL(url);
+            videoFeed.src = url;
+            videoFeed.style.display = 'block';
+        } else {
+            playAudioChunk(buffer);
+        }
+    }
+
+    function sendCommand(type, data = {}) {
+        if (!ws || !isConnected) return;
+        const cmd = {
+            type: 'command',
+            data: {
+                type: type,
+                data: JSON.stringify(data)
+            }
+        };
+        ws.send(JSON.stringify(cmd));
+        log(`Sent command: ${type}`);
+    }
+    
+    function toggleAudio() {
+        if (isAudioOn) {
+            sendCommand('audioOff');
+            isAudioOn = false;
+            log("Audio OFF command sent");
+        } else {
+            sendCommand('audioOn');
+            isAudioOn = true;
+            log("Audio ON command sent");
+        }
+    }
+
+    let currentCameraFacing = 'back';
+
+    function toggleCamera() {
+        currentCameraFacing = (currentCameraFacing === 'back') ? 'front' : 'back';
+        sendCommand('switchCamera', { facing: currentCameraFacing });
+        log(`Switching to ${currentCameraFacing} camera...`);
+    }
+
+    // ...
+
+    function playAudioChunk(arrayBuffer) {
+        if (!audioCtx) return;
+        const int16Data = new Int16Array(arrayBuffer);
+        const float32Data = new Float32Array(int16Data.length);
+        for (let i = 0; i < int16Data.length; i++) {
+            float32Data[i] = int16Data[i] / 32768.0;
+        }
+        // Match Android Sample Rate (16000 Hz)
+        const buffer = audioCtx.createBuffer(1, float32Data.length, 16000); 
+        buffer.getChannelData(0).set(float32Data);
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        const currentTime = audioCtx.currentTime;
+        if (nextStartTime < currentTime) nextStartTime = currentTime;
+        source.start(nextStartTime);
+        nextStartTime += buffer.duration;
+    }
+</script>
+
 </body>
 </html>

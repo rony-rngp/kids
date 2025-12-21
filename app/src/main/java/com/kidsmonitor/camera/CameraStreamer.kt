@@ -20,7 +20,8 @@ import java.util.concurrent.Executors
 class CameraStreamer(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
-    private val onFrame: (ByteArray) -> Unit
+    private val onFrame: (ByteArray) -> Unit,
+    private val onError: (String) -> Unit
 ) {
     private val cameraExecutor = Executors.newSingleThreadExecutor()
     private var cameraProvider: ProcessCameraProvider? = null
@@ -82,6 +83,7 @@ class CameraStreamer(
             Log.d("CameraStreamer", "Camera use cases bound successfully")
         } catch (exc: Exception) {
             Log.e("CameraStreamer", "Use case binding failed", exc)
+            onError("Camera Binding Failed: ${exc.message}")
         }
     }
 
