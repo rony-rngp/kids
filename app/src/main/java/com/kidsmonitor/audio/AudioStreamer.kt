@@ -59,7 +59,11 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
         audioRecord?.startRecording()
 
         scope.launch {
-            val buffer = ByteArray(bufferSize)
+            // Use a smaller buffer for reading to reduce latency (1280 bytes ~ 40ms at 16kHz)
+            // AudioRecord bufferSize remains large for safety, but we read in small chunks.
+            val readBufferSize = 1280 
+            val buffer = ByteArray(readBufferSize)
+            
             while (this.isActive && isRecording) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (read > 0) {

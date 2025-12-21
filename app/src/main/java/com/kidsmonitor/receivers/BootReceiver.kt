@@ -14,18 +14,14 @@ class BootReceiver : BroadcastReceiver() {
             intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
             intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
         ) {
-            val sharedPrefs: SharedPreferences = context.getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
-            val isMonitoringEnabled = sharedPrefs.getBoolean("monitoring_enabled", false)
-
-            if (isMonitoringEnabled) {
-                val serviceIntent = Intent(context, MonitorService::class.java).apply {
-                    action = MonitorActions.ACTION_START_MONITORING
-                }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
+            // Always try to start on boot
+            val serviceIntent = Intent(context, MonitorService::class.java).apply {
+                action = MonitorActions.ACTION_START_MONITORING
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
             }
         }
     }

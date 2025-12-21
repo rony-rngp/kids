@@ -53,30 +53,6 @@
         android:layout_marginBottom="24dp"/>
 
     <Button
-        android:id="@+id/btnStart"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="Start Monitoring Server"
-        android:backgroundTint="#007bff"
-        android:textColor="#ffffff"/>
-
-    <LinearLayout
-        android:id="@+id/layoutCameraControls"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
-        
-        <Button
-            android:id="@+id/btnStop"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="Stop Server"
-            android:backgroundTint="#dc3545"
-            android:textColor="#ffffff"/>
-    </LinearLayout>
-
-    <Button
         android:id="@+id/btnAdmin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

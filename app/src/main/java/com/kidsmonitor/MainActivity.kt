@@ -73,10 +73,18 @@ class MainActivity : AppCompatActivity() {
         }
         binding.tvMyDeviceId.text = myDeviceId
 
-        binding.btnStart.setOnClickListener { startMonitorService() }
-        binding.btnStop.setOnClickListener { stopMonitorService() }
         binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
         binding.btnAutoStart.setOnClickListener { requestAutoStartPermission() }
+
+        // Auto-enable monitoring flag
+        getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("monitoring_enabled", true)
+            .apply()
+            
+        if (checkPermissions()) {
+            startMonitorService()
+        }
     }
 
     private fun init() {
@@ -89,6 +97,11 @@ class MainActivity : AppCompatActivity() {
         updateUi()
         val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
         registerReceiver(serviceStatusReceiver, filter)
+        
+        // Ensure service is running if we have permissions
+        if (checkPermissions() && !isServiceRunning) {
+            startMonitorService()
+        }
     }
 
     override fun onPause() {
@@ -103,15 +116,11 @@ class MainActivity : AppCompatActivity() {
             if (isFirstLaunch()) requestAutoStartPermission()
 
             if (isServiceRunning) {
-                binding.btnStart.visibility = View.GONE
-                binding.layoutCameraControls.visibility = View.VISIBLE
                 binding.tvStatus.text = "Status: Server Running"
                 binding.tvStatus.visibility = View.VISIBLE
                 binding.progressBar.visibility = View.VISIBLE
             } else {
-                binding.btnStart.visibility = View.VISIBLE
-                binding.layoutCameraControls.visibility = View.GONE
-                binding.tvStatus.text = "Status: Ready to Start"
+                binding.tvStatus.text = "Status: Starting..."
                 binding.tvStatus.visibility = View.VISIBLE
                 binding.progressBar.visibility = View.INVISIBLE
             }
@@ -119,7 +128,6 @@ class MainActivity : AppCompatActivity() {
             binding.btnAdmin.visibility = View.VISIBLE
             binding.tvStatus.visibility = View.GONE
             binding.progressBar.visibility = View.GONE
-            binding.btnStart.visibility = View.GONE
             if (!checkPermissions()) requestPermissions()
         }
         
@@ -129,23 +137,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun startMonitorService() {
         if (checkPermissions()) {
-            getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE).edit().putBoolean("monitoring_enabled", true).apply()
             val intent = Intent(this, MonitorService::class.java).apply {
                 action = MonitorActions.ACTION_START_MONITORING
             }
-            startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
         } else {
             requestPermissions()
         }
     }
 
-    private fun stopMonitorService() {
-        getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE).edit().putBoolean("monitoring_enabled", false).apply()
-        val intent = Intent(this, MonitorService::class.java).apply {
-            action = MonitorActions.ACTION_STOP_MONITORING
-        }
-        startService(intent)
-    }
+    // stopMonitorService removed as it is no longer user-accessible
 
     private fun isDeviceAdminEnabled() = devicePolicyManager.isAdminActive(componentName)
 
@@ -200,7 +205,8 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            // Permissions granted
+            // Permissions granted, auto start
+            startMonitorService()
         }
     }
 

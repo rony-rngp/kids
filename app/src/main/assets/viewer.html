@@ -212,6 +212,7 @@
     let audioCtx;
     let nextStartTime = 0;
     let isAudioOn = false;
+    let audioQueue = [];
     
     // UI Elements
     const statusDiv = document.getElementById('status');
@@ -400,12 +401,45 @@
         // Match Android Sample Rate (16000 Hz)
         const buffer = audioCtx.createBuffer(1, float32Data.length, 16000); 
         buffer.getChannelData(0).set(float32Data);
+        
+        const currentTime = audioCtx.currentTime;
+        
+        // --- Low Latency Logic ---
+        
+        // 1. Clean up finished nodes
+        // (Actual cleanup happens via onended below)
+        
+        // 2. Underrun: System ran dry. Reset.
+        if (nextStartTime < currentTime) {
+            nextStartTime = currentTime;
+        }
+        
+        // 3. Overrun/Drift: We are too far behind real-time (> 500ms)
+        if (nextStartTime > currentTime + 0.5) {
+            // console.log("Audio Latency High: Resyncing...");
+            // Stop all currently scheduled/playing nodes to flush the queue
+            audioQueue.forEach(node => {
+                try { node.stop(); } catch(e) {}
+            });
+            audioQueue = [];
+            
+            // Jump to now
+            nextStartTime = currentTime;
+        }
+        
         const source = audioCtx.createBufferSource();
         source.buffer = buffer;
         source.connect(audioCtx.destination);
-        const currentTime = audioCtx.currentTime;
-        if (nextStartTime < currentTime) nextStartTime = currentTime;
         source.start(nextStartTime);
+        
+        // Add to queue for potential cancellation
+        audioQueue.push(source);
+        // Remove from queue when done (optional optimization to keep array small)
+        source.onended = () => {
+             const index = audioQueue.indexOf(source);
+             if (index > -1) audioQueue.splice(index, 1);
+        };
+        
         nextStartTime += buffer.duration;
     }
 </script>
