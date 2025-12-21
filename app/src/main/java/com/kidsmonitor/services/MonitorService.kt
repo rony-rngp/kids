@@ -121,12 +121,7 @@ class MonitorService : LifecycleService() {
         wsClient = object : WebSocketClient(URI(REMOTE_SERVER_URL)) {
             override fun onOpen(handshakedata: ServerHandshake?) {
                 Log.d("MonitorService", "Connected to relay server.")
-                val sharedPrefs = getSharedPreferences("MKLMonitorPrefs", Context.MODE_PRIVATE)
-                val deviceName = sharedPrefs.getString("deviceName", "My Phone") ?: "My Phone"
-                
-                val registerMap = mapOf("type" to "register_camera", "deviceId" to deviceId, "deviceName" to deviceName)
-                send(Gson().toJson(registerMap))
-                updateNotification("Online. ID: $deviceId ($deviceName)")
+                sendRegistration()
             }
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
@@ -258,8 +253,22 @@ class MonitorService : LifecycleService() {
             MonitorActions.ACTION_STOP_MONITORING -> {
                 stopForegroundService()
             }
+            MonitorActions.ACTION_UPDATE_CONFIG -> {
+                if (::wsClient.isInitialized && wsClient.isOpen) {
+                    sendRegistration()
+                }
+            }
         }
         return START_STICKY
+    }
+
+    private fun sendRegistration() {
+        val sharedPrefs = getSharedPreferences("MKLMonitorPrefs", Context.MODE_PRIVATE)
+        val deviceName = sharedPrefs.getString("deviceName", "My Phone") ?: "My Phone"
+        
+        val registerMap = mapOf("type" to "register_camera", "deviceId" to deviceId, "deviceName" to deviceName)
+        wsClient.send(Gson().toJson(registerMap))
+        updateNotification("Online. ID: $deviceId ($deviceName)")
     }
 
     private fun stopForegroundService() {

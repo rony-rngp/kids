@@ -62,8 +62,8 @@ wss.on('connection', (ws, req) => {
                 if (!rooms[deviceId]) {
                     rooms[deviceId] = { camera: null, viewers: [] };
                 }
-                // Close old camera connection if exists
-                if (rooms[deviceId].camera) {
+                // Close old camera connection if exists AND it's a different socket
+                if (rooms[deviceId].camera && rooms[deviceId].camera !== ws) {
                     try { rooms[deviceId].camera.close(); } catch(e){}
                 }
                 rooms[deviceId].camera = ws;

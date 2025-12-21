@@ -81,6 +81,11 @@ class MainActivity : AppCompatActivity() {
         binding.etDeviceName.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(s: android.text.Editable?) {
                 sharedPrefs.edit().putString("deviceName", s.toString()).apply()
+                // Notify service to update name
+                val intent = Intent(this@MainActivity, MonitorService::class.java).apply {
+                    action = MonitorActions.ACTION_UPDATE_CONFIG
+                }
+                startService(intent)
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
