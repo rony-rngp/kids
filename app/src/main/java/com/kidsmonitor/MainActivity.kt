@@ -72,6 +72,19 @@ class MainActivity : AppCompatActivity() {
             myDeviceId = existingId
         }
         binding.tvMyDeviceId.text = myDeviceId
+        
+        // Load Device Name
+        val savedName = sharedPrefs.getString("deviceName", "My Phone")
+        binding.etDeviceName.setText(savedName)
+        
+        // Save Name on Change
+        binding.etDeviceName.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                sharedPrefs.edit().putString("deviceName", s.toString()).apply()
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
         binding.btnAutoStart.setOnClickListener { requestAutoStartPermission() }

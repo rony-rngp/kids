@@ -297,13 +297,15 @@
                 const msg = JSON.parse(event.data);
                 if (msg.type === 'device_list') {
                     if (msg.devices.length === 0) {
-                        deviceListDiv.innerHTML = '<span style="color: #666; font-size: 0.9em; padding: 5px;">No active devices found.</span>';
+                        deviceListDiv.innerHTML = '<span style="color: #666; font-size: 0.9em; padding: 5px;">No devices found.</span>';
                     } else {
-                        msg.devices.forEach(id => {
+                        msg.devices.forEach(device => {
                             const tag = document.createElement('div');
                             tag.className = 'device-tag';
-                            tag.innerHTML = `<i class="fas fa-mobile-alt"></i> ${id}`;
-                            tag.onclick = () => selectDevice(id);
+                            const statusColor = device.online ? '#28a745' : '#6c757d'; // Green or Grey
+                            tag.style.borderColor = statusColor;
+                            tag.innerHTML = `<i class="fas fa-mobile-alt" style="color:${statusColor}"></i> ${device.name} <small>(${device.id})</small>`;
+                            tag.onclick = () => selectDevice(device.id);
                             deviceListDiv.appendChild(tag);
                         });
                     }
@@ -328,12 +330,56 @@
     }
 
     function connect() {
-        deviceId = deviceIdInput.value.trim();
-        if (!deviceId) {
+        const id = deviceIdInput.value.trim();
+        if (!id) {
             alert("Please enter a Device ID");
             return;
         }
+        
+        // Validate ID exists (Optional: can be skipped if user wants to force connect)
+        // We'll do a quick check via a temp socket or trust the user if they typed it manually?
+        // User asked: "if click wrong id.. it still connect.. fix it"
+        // So we MUST validate.
+        
+        log("Validating Device ID...");
+        btnConnect.disabled = true;
+        
+        const valWs = new WebSocket(RELAY_SERVER_URL);
+        valWs.onopen = () => valWs.send(JSON.stringify({ type: 'get_devices' }));
+        valWs.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'device_list') {
+                    const exists = msg.devices.find(d => d.id === id);
+                    valWs.close();
+                    
+                    if (exists) {
+                        if (!exists.online) {
+                             if(!confirm(`Device "${exists.name}" is currently OFFLINE. Connect anyway?`)) {
+                                 btnConnect.disabled = false;
+                                 return;
+                             }
+                        }
+                        startConnection(id);
+                    } else {
+                        alert("Device ID not found in server records.");
+                        log("Error: Invalid Device ID");
+                        btnConnect.disabled = false;
+                    }
+                }
+            } catch(err) {
+                valWs.close();
+                startConnection(id); // Fallback on error
+            }
+        };
+        valWs.onerror = () => {
+             valWs.close();
+             startConnection(id); // Fallback
+        };
+    }
 
+    function startConnection(id) {
+        deviceId = id;
         log("Connecting to Relay Server...");
         
         ws = new WebSocket(RELAY_SERVER_URL);
