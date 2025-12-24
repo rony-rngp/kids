@@ -91,11 +91,10 @@ class MonitorService : LifecycleService() {
              Handler(Looper.getMainLooper()).postDelayed({
                  if (!::wsClient.isInitialized || !wsClient.isOpen) {
                      Log.d("MonitorService", "Network available, reconnecting...")
-                     if (!::wsClient.isInitialized) initWebSocket()
+                     // Always re-init to ensure a fresh state, as reusing closed clients is problematic
+                     initWebSocket()
                      try { wsClient.connect() } catch (e: Exception) { 
-                         // Retry once more if failed
-                         if (!::wsClient.isInitialized) initWebSocket()
-                         try { wsClient.connect() } catch(e2: Exception) {}
+                         Log.e("MonitorService", "Reconnect failed: ${e.message}")
                      }
                  }
              }, 2000) // Small delay to let network settle
@@ -147,7 +146,10 @@ class MonitorService : LifecycleService() {
                 Log.d("MonitorService", "Disconnected: $reason")
                 updateNotification("Disconnected (Reconnecting...)")
                 Handler(Looper.getMainLooper()).postDelayed({
-                    if (!isOpen) reconnect()
+                    // Only reconnect if this instance is still the active one
+                    if (::wsClient.isInitialized && wsClient === this && !isOpen) {
+                        reconnect()
+                    }
                 }, 5000)
             }
 
