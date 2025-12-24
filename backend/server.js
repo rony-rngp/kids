@@ -25,8 +25,15 @@ const rooms = {};
 
 console.log(`MKL Relay Server started on port ${port}`);
 
+function heartbeat() {
+  this.isAlive = true;
+}
+
 wss.on('connection', (ws, req) => {
     console.log('New client connected');
+    ws.isAlive = true;
+    ws.on('pong', heartbeat);
+
     ws.send(JSON.stringify({ type: 'status', message: 'Welcome to MKL Relay' }));
 
     let type = null;
@@ -149,4 +156,17 @@ wss.on('connection', (ws, req) => {
             console.log(`Viewer left: ${deviceId}`);
         }
     });
+});
+
+const interval = setInterval(function ping() {
+  wss.clients.forEach(function each(ws) {
+    if (ws.isAlive === false) return ws.terminate();
+
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
+
+wss.on('close', function close() {
+  clearInterval(interval);
 });
