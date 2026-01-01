@@ -24,6 +24,8 @@ import com.kidsmonitor.services.MonitorService
 import com.kidsmonitor.utils.MonitorActions
 import java.util.UUID
 
+import androidx.appcompat.app.AlertDialog
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -113,6 +115,8 @@ class MainActivity : AppCompatActivity() {
             
         if (checkPermissions()) {
             startMonitorService()
+        } else {
+            // Wait for onResume to handle permission request logic
         }
     }
 
@@ -123,19 +127,30 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        updateUi()
-        val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
-        registerReceiver(serviceStatusReceiver, filter)
-        
-        // Ensure service is running if we have permissions
-        if (checkPermissions() && !isServiceRunning) {
-            startMonitorService()
+        if (!checkPermissions()) {
+            // If permissions missing, block UI and request them
+            binding.btnAdmin.visibility = View.GONE
+            binding.tvStatus.text = "Permissions Required"
+            binding.tvStatus.visibility = View.VISIBLE
+            binding.progressBar.visibility = View.GONE
+            requestPermissions()
+        } else {
+            updateUi()
+            val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
+            registerReceiver(serviceStatusReceiver, filter)
+            
+            // Ensure service is running if we have permissions
+            if (!isServiceRunning) {
+                startMonitorService()
+            }
         }
     }
 
     override fun onPause() {
         super.onPause()
-        unregisterReceiver(serviceStatusReceiver)
+        try {
+            unregisterReceiver(serviceStatusReceiver)
+        } catch (e: Exception) {}
     }
 
     private fun updateUi() {
@@ -157,7 +172,6 @@ class MainActivity : AppCompatActivity() {
             binding.btnAdmin.visibility = View.VISIBLE
             binding.tvStatus.visibility = View.GONE
             binding.progressBar.visibility = View.GONE
-            if (!checkPermissions()) requestPermissions()
         }
         
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
@@ -174,8 +188,6 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startService(intent)
             }
-        } else {
-            requestPermissions()
         }
     }
 
@@ -190,8 +202,6 @@ class MainActivity : AppCompatActivity() {
                 putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Allow MKL admin so it cannot be easily uninstalled.")
             }
             startActivity(intent)
-        } else {
-            requestPermissions()
         }
     }
 
@@ -199,6 +209,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestPermissions() {
         ActivityCompat.requestPermissions(this, requiredPermissions, PERMISSION_REQUEST_CODE)
+    }
+
+    private fun showPermissionDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Permissions Required")
+            .setMessage("This app needs Camera, Microphone, Contacts, and Storage permissions to function. Please grant them in Settings.")
+            .setPositiveButton("Grant") { _, _ -> requestPermissions() }
+            .setNegativeButton("Settings") { _, _ -> openAppSettings() }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun openAppSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        val uri = Uri.fromParts("package", packageName, null)
+        intent.data = uri
+        startActivity(intent)
     }
 
     private fun requestIgnoreBatteryOptimizations() {
@@ -233,9 +260,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            // Permissions granted, auto start
-            startMonitorService()
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                // Permissions granted, proceed
+                updateUi()
+                startMonitorService()
+             } else {
+                 // Denied, show strict dialog
+                 showPermissionDialog()
+             }
         }
     }
 
