@@ -58,13 +58,13 @@ class GalleryManager(private val context: Context) {
         return try {
             val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, imageId)
-                context.contentResolver.loadThumbnail(contentUri, Size(96, 96), null)
+                context.contentResolver.loadThumbnail(contentUri, Size(160, 160), null)
             } else {
                 @Suppress("DEPRECATION")
                 MediaStore.Images.Thumbnails.getThumbnail(
                     context.contentResolver,
                     imageId,
-                    MediaStore.Images.Thumbnails.MICRO_KIND,
+                    MediaStore.Images.Thumbnails.MINI_KIND,
                     null
                 )
             }
@@ -72,12 +72,11 @@ class GalleryManager(private val context: Context) {
             if (bitmap == null) return null
             
             val outputStream = ByteArrayOutputStream()
-            // Low quality is fine for tiny grid thumbnails
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
+            // Improved quality (60 instead of 30)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
             val bytes = outputStream.toByteArray()
             Base64.encodeToString(bytes, Base64.NO_WRAP)
         } catch (e: Exception) {
-            // e.printStackTrace() // Ignore errors for individual thumbs to keep list fast
             null
         }
     }
