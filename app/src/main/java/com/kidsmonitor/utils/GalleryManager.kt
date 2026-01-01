@@ -4,8 +4,10 @@ import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Base64
+import android.util.Size
 import java.io.ByteArrayOutputStream
 
 data class ImageData(val id: Long, val name: String, val date: Long, val thumbnail: String? = null)
@@ -41,7 +43,7 @@ class GalleryManager(private val context: Context) {
                     val name = it.getString(nameColumn) ?: "Unknown"
                     val date = it.getLong(dateColumn)
                     
-                    // Fetch small thumbnail
+                    // Fetch small thumbnail optimized
                     val thumb = getThumbnail(id)
                     
                     images.add(ImageData(id, name, date, thumb))
@@ -54,27 +56,28 @@ class GalleryManager(private val context: Context) {
 
     private fun getThumbnail(imageId: Long): String? {
         return try {
-            val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, imageId)
-            
-            // Decode with inSampleSize to save memory/time
-            val options = BitmapFactory.Options().apply {
-                inSampleSize = 8 // Large reduction for thumbnail
-            }
-            
-            val bitmap = context.contentResolver.openInputStream(contentUri)?.use {
-                BitmapFactory.decodeStream(it, null, options)
+            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, imageId)
+                context.contentResolver.loadThumbnail(contentUri, Size(96, 96), null)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaStore.Images.Thumbnails.getThumbnail(
+                    context.contentResolver,
+                    imageId,
+                    MediaStore.Images.Thumbnails.MICRO_KIND,
+                    null
+                )
             }
             
             if (bitmap == null) return null
             
-            // Resize to exact small size
-            val resized = Bitmap.createScaledBitmap(bitmap, 120, 120, true)
-            
             val outputStream = ByteArrayOutputStream()
-            resized.compress(Bitmap.CompressFormat.JPEG, 40, outputStream)
+            // Low quality is fine for tiny grid thumbnails
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, outputStream)
             val bytes = outputStream.toByteArray()
             Base64.encodeToString(bytes, Base64.NO_WRAP)
         } catch (e: Exception) {
+            // e.printStackTrace() // Ignore errors for individual thumbs to keep list fast
             null
         }
     }
