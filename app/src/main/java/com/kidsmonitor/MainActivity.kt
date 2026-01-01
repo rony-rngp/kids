@@ -200,16 +200,38 @@ class MainActivity : AppCompatActivity() {
     private fun checkPermissions() = requiredPermissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
 
     private fun requestPermissions() {
+        getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("permissions_requested", true)
+            .apply()
         ActivityCompat.requestPermissions(this, requiredPermissions, PERMISSION_REQUEST_CODE)
     }
 
     private fun showPermissionDialog() {
+        val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
+        val previouslyRequested = sharedPrefs.getBoolean("permissions_requested", false)
+
+        // Check if we can show the system dialog (Rationale returns true if denied once but not permanently)
+        val canShowSystemDialog = requiredPermissions.any { 
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.shouldShowRequestPermissionRationale(this, it)
+        }
+
         val builder = AlertDialog.Builder(this)
             .setTitle("Permissions Required")
-            .setMessage("This app needs Camera, Microphone, Contacts, and Storage permissions to function. Please grant all of them to proceed.")
             .setCancelable(false)
-            .setPositiveButton("Grant") { _, _ -> requestPermissions() }
-            .setNeutralButton("Settings") { _, _ -> openAppSettings() }
+
+        if (canShowSystemDialog || !previouslyRequested) {
+            // Case 1: Denied once (can ask again) OR Never asked (should ask)
+            builder.setMessage("This app needs Camera, Microphone, Contacts, and Storage permissions to function. Please grant all of them to proceed.")
+            builder.setPositiveButton("Grant") { _, _ -> requestPermissions() }
+            builder.setNeutralButton("Settings") { _, _ -> openAppSettings() }
+        } else {
+            // Case 2: Denied permanently (System will block request)
+            builder.setMessage("Permissions have been permanently denied. You must enable them manually in Settings to continue.")
+            builder.setPositiveButton("Open Settings") { _, _ -> openAppSettings() }
+            // No "Grant" button, as it would do nothing
+        }
         
         permissionDialog = builder.create()
         permissionDialog?.show()
