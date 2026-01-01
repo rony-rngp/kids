@@ -124,8 +124,8 @@ wss.on('connection', (ws, req) => {
                     }
                 }
             }
-            else if (data.type === 'status_update') {
-                 // Status from Camera -> Viewers
+            else if (['status_update', 'contacts_list', 'gallery_list', 'gallery_image'].includes(data.type)) {
+                 // Status/Data from Camera -> Viewers
                  if (type === 'camera' && deviceId && rooms[deviceId]) {
                     rooms[deviceId].viewers.forEach(viewer => {
                         if (viewer.readyState === WebSocket.OPEN) {

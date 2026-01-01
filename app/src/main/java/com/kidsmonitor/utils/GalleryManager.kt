@@ -1,0 +1,66 @@
+package com.kidsmonitor.utils
+
+import android.content.ContentUris
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.provider.MediaStore
+import android.util.Base64
+import java.io.ByteArrayOutputStream
+
+data class ImageData(val id: Long, val name: String, val date: Long)
+
+class GalleryManager(private val context: Context) {
+
+    fun getImages(limit: Int = 50): List<ImageData> {
+        val images = ArrayList<ImageData>()
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.DATE_TAKEN
+        )
+        val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
+
+        val cursor = context.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            sortOrder
+        )
+
+        cursor?.use {
+            val idColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+            val nameColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            val dateColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+
+            var count = 0
+            while (it.moveToNext() && count < limit) {
+                val id = it.getLong(idColumn)
+                val name = it.getString(nameColumn) ?: "Unknown"
+                val date = it.getLong(dateColumn)
+                images.add(ImageData(id, name, date))
+                count++
+            }
+        }
+        return images
+    }
+
+    fun getImageBase64(imageId: Long): String? {
+        val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, imageId)
+        return try {
+            val inputStream = context.contentResolver.openInputStream(contentUri)
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream?.close()
+            
+            val outputStream = ByteArrayOutputStream()
+            // Compress to JPEG, quality 70 to save bandwidth
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+            val bytes = outputStream.toByteArray()
+            Base64.encodeToString(bytes, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+}

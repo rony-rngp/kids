@@ -33,9 +33,20 @@ class MainActivity : AppCompatActivity() {
     private var myDeviceId: String = ""
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
+        arrayOf(
+            Manifest.permission.CAMERA, 
+            Manifest.permission.RECORD_AUDIO, 
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_MEDIA_IMAGES
+        )
     } else {
-        arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+        arrayOf(
+            Manifest.permission.CAMERA, 
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
     }
 
     private val serviceStatusReceiver = object : BroadcastReceiver() {
