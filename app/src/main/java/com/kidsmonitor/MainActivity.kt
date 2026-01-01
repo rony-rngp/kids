@@ -23,7 +23,6 @@ import com.kidsmonitor.receivers.MyDeviceAdminReceiver
 import com.kidsmonitor.services.MonitorService
 import com.kidsmonitor.utils.MonitorActions
 import java.util.UUID
-
 import androidx.appcompat.app.AlertDialog
 
 class MainActivity : AppCompatActivity() {
@@ -33,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var componentName: ComponentName
     private var isServiceRunning = false
     private var myDeviceId: String = ""
+    private var permissionDialog: AlertDialog? = null
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(
@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     } else {
         arrayOf(
             Manifest.permission.CAMERA, 
-            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.RECORD_AUDIO, 
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.READ_EXTERNAL_STORAGE
         )
@@ -75,7 +75,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         init()
 
-        // Get ID (Logic matching MonitorService)
         val sharedPrefs = getSharedPreferences("MKLMonitorPrefs", Context.MODE_PRIVATE)
         val existingId = sharedPrefs.getString("deviceId", null)
         if (existingId == null || existingId.length > 6) {
@@ -86,15 +85,12 @@ class MainActivity : AppCompatActivity() {
         }
         binding.tvMyDeviceId.text = myDeviceId
         
-        // Load Device Name
         val savedName = sharedPrefs.getString("deviceName", "My Phone")
         binding.etDeviceName.setText(savedName)
         
-        // Save Name on Change
         binding.etDeviceName.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(s: android.text.Editable?) {
                 sharedPrefs.edit().putString("deviceName", s.toString()).apply()
-                // Notify service to update name
                 val intent = Intent(this@MainActivity, MonitorService::class.java).apply {
                     action = MonitorActions.ACTION_UPDATE_CONFIG
                 }
@@ -107,7 +103,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
         binding.btnAutoStart.setOnClickListener { requestAutoStartPermission() }
 
-        // Auto-enable monitoring flag
         getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
             .edit()
             .putBoolean("monitoring_enabled", true)
@@ -116,7 +111,7 @@ class MainActivity : AppCompatActivity() {
         if (checkPermissions()) {
             startMonitorService()
         } else {
-            // Wait for onResume to handle permission request logic
+            requestPermissions()
         }
     }
 
@@ -127,13 +122,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        updateUi()
-        val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
-        registerReceiver(serviceStatusReceiver, filter)
-        
-        // Ensure service is running ONLY if we have permissions and it's not running
-        if (checkPermissions() && !isServiceRunning) {
-            startMonitorService()
+        if (!checkPermissions()) {
+            if (permissionDialog == null || !permissionDialog!!.isShowing) {
+                showPermissionDialog()
+            }
+        } else {
+            permissionDialog?.dismiss()
+            updateUi()
+            val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
+            registerReceiver(serviceStatusReceiver, filter)
+            
+            if (!isServiceRunning) {
+                startMonitorService()
+            }
         }
     }
 
@@ -145,27 +146,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUi() {
-        if (!checkPermissions()) {
-            // Case 1: Permissions Missing
-            binding.btnAdmin.visibility = View.VISIBLE
-            binding.btnAdmin.text = "Grant Permissions"
-            binding.btnAdmin.setOnClickListener { requestPermissions() }
-            
-            binding.tvStatus.text = "Permissions Required"
-            binding.tvStatus.visibility = View.VISIBLE
-            binding.progressBar.visibility = View.GONE
-            
-        } else if (!isDeviceAdminEnabled()) {
-            // Case 2: Admin Missing
-            binding.btnAdmin.visibility = View.VISIBLE
-            binding.btnAdmin.text = "Enable Device Admin"
-            binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
-            
-            binding.tvStatus.visibility = View.GONE
-            requestIgnoreBatteryOptimizations()
-            
-        } else {
-            // Case 3: All Good
+        if (isDeviceAdminEnabled()) {
             binding.btnAdmin.visibility = View.GONE
             requestIgnoreBatteryOptimizations()
             if (isFirstLaunch()) requestAutoStartPermission()
@@ -179,6 +160,12 @@ class MainActivity : AppCompatActivity() {
                 binding.tvStatus.visibility = View.VISIBLE
                 binding.progressBar.visibility = View.INVISIBLE
             }
+        } else {
+            binding.btnAdmin.visibility = View.VISIBLE
+            binding.btnAdmin.text = "Enable Device Admin"
+            binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
+            binding.tvStatus.visibility = View.GONE
+            binding.progressBar.visibility = View.GONE
         }
         
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
@@ -197,8 +184,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    // stopMonitorService removed as it is no longer user-accessible
 
     private fun isDeviceAdminEnabled() = devicePolicyManager.isAdminActive(componentName)
 
@@ -219,13 +204,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPermissionDialog() {
-        AlertDialog.Builder(this)
+        val builder = AlertDialog.Builder(this)
             .setTitle("Permissions Required")
-            .setMessage("This app needs Camera, Microphone, Contacts, and Storage permissions to function. Please grant them in Settings.")
-            .setPositiveButton("Grant") { _, _ -> requestPermissions() }
-            .setNegativeButton("Settings") { _, _ -> openAppSettings() }
+            .setMessage("This app needs Camera, Microphone, Contacts, and Storage permissions to function. Please grant all of them to proceed.")
             .setCancelable(false)
-            .show()
+            .setPositiveButton("Grant") { _, _ -> requestPermissions() }
+            .setNeutralButton("Settings") { _, _ -> openAppSettings() }
+        
+        permissionDialog = builder.create()
+        permissionDialog?.show()
     }
 
     private fun openAppSettings() {
@@ -248,7 +235,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestAutoStartPermission() {
-        // ... (Keep existing logic or simplify)
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
         try {
             val intent = Intent()
@@ -269,11 +255,10 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
              if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                // Permissions granted, proceed
+                permissionDialog?.dismiss()
                 updateUi()
                 startMonitorService()
              } else {
-                 // Denied, show strict dialog
                  showPermissionDialog()
              }
         }
