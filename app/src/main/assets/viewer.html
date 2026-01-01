@@ -292,12 +292,36 @@
             width: auto;
             padding: 10px 20px;
         }
+        
+        /* Spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 30px;
+            height: 30px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        /* Spinner for Full Image */
+        #imgSpinner {
+            position: absolute;
+            z-index: 1001;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
 
 <div id="imageModal">
-    <img id="fullImage" src="">
+    <div id="imgSpinner" class="spinner"></div>
+    <img id="fullImage" src="" style="display:none;" onload="this.style.display='block'; document.getElementById('imgSpinner').style.display='none';">
     <button id="closeModal" onclick="closeModal()">Close</button>
 </div>
 
@@ -668,13 +692,11 @@
             }
             else if (msg.type === 'gallery_list') {
                 const images = JSON.parse(msg.data.data);
-                // msg.data.offset might be string, parse it
                 const returnedOffset = parseInt(msg.data.offset) || 0;
                 
                 const grid = document.getElementById('galleryGrid');
                 grid.innerHTML = '';
                 
-                // Update Pagination Controls
                 const pageNum = (returnedOffset / 50) + 1;
                 document.getElementById('pageIndicator').innerText = "Page " + pageNum;
                 document.getElementById('btnPrevPage').disabled = (returnedOffset === 0);
@@ -687,33 +709,41 @@
                         const div = document.createElement('div');
                         div.className = 'gallery-item';
                         div.onclick = () => requestImage(img.id);
-                        // Convert timestamp to date string
                         const dateStr = new Date(img.date * 1000).toLocaleDateString();
                         
-                        let thumbHtml = `<i class="fas fa-image fa-2x"></i>`;
-                        if (img.thumbnail) {
-                            thumbHtml = `<img src="data:image/jpeg;base64,${img.thumbnail}" style="width:100%; height:100%; object-fit:cover;">`;
-                        }
+                        // Initial Placeholder with Spinner-like icon
+                        const thumbHtml = `<div id="thumb-${img.id}" class="gallery-thumb"><i class="fas fa-spinner fa-spin"></i></div>`;
                         
                         div.innerHTML = `
-                            <div class="gallery-thumb" id="thumb-${img.id}">${thumbHtml}</div>
+                            ${thumbHtml}
                             <div class="gallery-name">${img.name}</div>
                             <div style="font-size:0.7em; color:#666;">${dateStr}</div>
                         `;
                         grid.appendChild(div);
                     });
                 }
-                log(`Loaded ${images.length} images (Page ${pageNum}).`);
+                log(`Loaded list (Page ${pageNum}). Loading thumbs...`);
+            }
+            else if (msg.type === 'thumbnail_update') {
+                const id = msg.data.id;
+                const base64 = msg.data.data;
+                const thumbDiv = document.getElementById('thumb-' + id);
+                if (thumbDiv) {
+                    thumbDiv.innerHTML = `<img src="data:image/jpeg;base64,${base64}" style="width:100%; height:100%; object-fit:cover;">`;
+                    thumbDiv.classList.remove('loading');
+                }
             }
             else if (msg.type === 'gallery_image') {
                 const id = msg.data.id;
                 const base64 = msg.data.data;
                 const imgSrc = "data:image/jpeg;base64," + base64;
                 
-                // If modal is open, show there
                 const modal = document.getElementById('imageModal');
                 if (modal.style.display === 'flex') {
-                    document.getElementById('fullImage').src = imgSrc;
+                    document.getElementById('imgSpinner').style.display = 'none';
+                    const img = document.getElementById('fullImage');
+                    img.src = imgSrc;
+                    img.style.display = 'block';
                 }
             }
         } catch (e) {
@@ -744,8 +774,10 @@
 
     function requestImage(id) {
         document.getElementById('imageModal').style.display = 'flex';
-        document.getElementById('fullImage').src = ''; // Clear previous
-        // Show loading state in modal?
+        document.getElementById('fullImage').src = ''; 
+        document.getElementById('fullImage').style.display = 'none';
+        document.getElementById('imgSpinner').style.display = 'inline-block';
+        
         sendCommand('get_image', { id: id.toString() });
     }
 

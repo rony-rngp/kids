@@ -259,9 +259,27 @@ class MonitorService : LifecycleService() {
                     val offset = command.data?.get("offset")?.toIntOrNull() ?: 0
                     val limit = command.data?.get("limit")?.toIntOrNull() ?: 50
                     
-                    val images = GalleryManager(this).getImages(limit, offset)
+                    // 1. Send List Metadata Only (Fast)
+                    val images = GalleryManager(this).getImages(limit, offset, fetchThumbnails = false)
                     val response = JsonCommand("gallery_list", mapOf("data" to Gson().toJson(images), "offset" to offset.toString()))
                     if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
+                    
+                    // 2. Stream Thumbnails Asynchronously
+                    Thread {
+                        val galleryManager = GalleryManager(this)
+                        images.forEach { img ->
+                            if (::wsClient.isInitialized && wsClient.isOpen) {
+                                val thumb = galleryManager.getThumbnail(img.id)
+                                if (thumb != null) {
+                                    val update = JsonCommand("thumbnail_update", mapOf("id" to img.id.toString(), "data" to thumb))
+                                    wsClient.send(Gson().toJson(update))
+                                    // Sleep tiny bit to not choke bandwidth completely?
+                                    Thread.sleep(10) 
+                                }
+                            }
+                        }
+                    }.start()
+                    
                 } else {
                     sendStatus("Error: Storage Permission Missing")
                 }

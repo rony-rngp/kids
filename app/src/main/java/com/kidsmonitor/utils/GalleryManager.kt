@@ -14,7 +14,7 @@ data class ImageData(val id: Long, val name: String, val date: Long, val thumbna
 
 class GalleryManager(private val context: Context) {
 
-    fun getImages(limit: Int = 50, offset: Int = 0): List<ImageData> {
+    fun getImages(limit: Int = 50, offset: Int = 0, fetchThumbnails: Boolean = false): List<ImageData> {
         val images = ArrayList<ImageData>()
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -44,7 +44,7 @@ class GalleryManager(private val context: Context) {
                     val date = it.getLong(dateColumn)
                     
                     // Fetch small thumbnail optimized
-                    val thumb = getThumbnail(id)
+                    val thumb = if (fetchThumbnails) getThumbnail(id) else null
                     
                     images.add(ImageData(id, name, date, thumb))
                     count++
@@ -54,7 +54,7 @@ class GalleryManager(private val context: Context) {
         return images
     }
 
-    private fun getThumbnail(imageId: Long): String? {
+    fun getThumbnail(imageId: Long): String? {
         return try {
             val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, imageId)
