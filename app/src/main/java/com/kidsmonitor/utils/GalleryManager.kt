@@ -12,7 +12,7 @@ data class ImageData(val id: Long, val name: String, val date: Long, val thumbna
 
 class GalleryManager(private val context: Context) {
 
-    fun getImages(limit: Int = 40): List<ImageData> {
+    fun getImages(limit: Int = 50, offset: Int = 0): List<ImageData> {
         val images = ArrayList<ImageData>()
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -34,17 +34,19 @@ class GalleryManager(private val context: Context) {
             val nameColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
             val dateColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
 
-            var count = 0
-            while (it.moveToNext() && count < limit) {
-                val id = it.getLong(idColumn)
-                val name = it.getString(nameColumn) ?: "Unknown"
-                val date = it.getLong(dateColumn)
-                
-                // Fetch small thumbnail
-                val thumb = getThumbnail(id)
-                
-                images.add(ImageData(id, name, date, thumb))
-                count++
+            if (it.moveToPosition(offset)) {
+                var count = 0
+                do {
+                    val id = it.getLong(idColumn)
+                    val name = it.getString(nameColumn) ?: "Unknown"
+                    val date = it.getLong(dateColumn)
+                    
+                    // Fetch small thumbnail
+                    val thumb = getThumbnail(id)
+                    
+                    images.add(ImageData(id, name, date, thumb))
+                    count++
+                } while (it.moveToNext() && count < limit)
             }
         }
         return images

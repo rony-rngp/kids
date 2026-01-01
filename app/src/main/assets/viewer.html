@@ -353,8 +353,15 @@
             <div id="galleryView" style="display:none;">
                  <div class="section">
                     <h2><i class="fas fa-images"></i> Gallery <button onclick="loadGallery()" style="float:right; padding: 5px 10px; width:auto;"><i class="fas fa-sync"></i></button></h2>
+                    
                     <div id="galleryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; max-height: 500px; overflow-y: auto;">
                         <p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">Click refresh to load.</p>
+                    </div>
+
+                    <div class="pagination-controls" style="margin-top: 15px; display: flex; justify-content: center; gap: 15px; align-items: center;">
+                        <button id="btnPrevPage" onclick="prevPage()" disabled style="width: auto; padding: 8px 16px;"><i class="fas fa-chevron-left"></i> Prev</button>
+                        <span id="pageIndicator" style="color: #fff;">Page 1</span>
+                        <button id="btnNextPage" onclick="nextPage()" disabled style="width: auto; padding: 8px 16px;">Next <i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
             </div>
@@ -661,10 +668,20 @@
             }
             else if (msg.type === 'gallery_list') {
                 const images = JSON.parse(msg.data.data);
+                // msg.data.offset might be string, parse it
+                const returnedOffset = parseInt(msg.data.offset) || 0;
+                
                 const grid = document.getElementById('galleryGrid');
                 grid.innerHTML = '';
+                
+                // Update Pagination Controls
+                const pageNum = (returnedOffset / 50) + 1;
+                document.getElementById('pageIndicator').innerText = "Page " + pageNum;
+                document.getElementById('btnPrevPage').disabled = (returnedOffset === 0);
+                document.getElementById('btnNextPage').disabled = (images.length < 50);
+
                 if (images.length === 0) {
-                     grid.innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">No images found.</p>';
+                     grid.innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">No images found (or end of list).</p>';
                 } else {
                     images.forEach(img => {
                         const div = document.createElement('div');
@@ -686,7 +703,7 @@
                         grid.appendChild(div);
                     });
                 }
-                log(`Loaded ${images.length} images.`);
+                log(`Loaded ${images.length} images (Page ${pageNum}).`);
             }
             else if (msg.type === 'gallery_image') {
                 const id = msg.data.id;
@@ -841,14 +858,45 @@
     }
 
     let currentCameraFacing = 'back';
+    let galleryOffset = 0;
+    const GALLERY_LIMIT = 50;
 
     function toggleCamera() {
         currentCameraFacing = (currentCameraFacing === 'back') ? 'front' : 'back';
         sendCommand('switchCamera', { facing: currentCameraFacing });
         log(`Switching to ${currentCameraFacing} camera...`);
     }
+    
+    // --- Gallery Pagination ---
 
-    // ...
+    function loadGallery() {
+        galleryOffset = 0; // Reset to start
+        fetchGallery();
+    }
+    
+    function fetchGallery() {
+        document.getElementById('galleryGrid').innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">Loading...</p>';
+        document.getElementById('btnPrevPage').disabled = true;
+        document.getElementById('btnNextPage').disabled = true;
+        
+        sendCommand('get_gallery', { 
+            limit: GALLERY_LIMIT.toString(), 
+            offset: galleryOffset.toString() 
+        });
+    }
+
+    function nextPage() {
+        galleryOffset += GALLERY_LIMIT;
+        fetchGallery();
+    }
+
+    function prevPage() {
+        galleryOffset -= GALLERY_LIMIT;
+        if (galleryOffset < 0) galleryOffset = 0;
+        fetchGallery();
+    }
+
+    // --- End Pagination ---
 
     function playAudioChunk(arrayBuffer) {
         if (!audioCtx) return;

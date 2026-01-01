@@ -256,8 +256,11 @@ class MonitorService : LifecycleService() {
             "get_gallery" -> {
                 val perm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
                 if (hasPermission(perm)) {
-                    val images = GalleryManager(this).getImages()
-                    val response = JsonCommand("gallery_list", mapOf("data" to Gson().toJson(images)))
+                    val offset = command.data?.get("offset")?.toIntOrNull() ?: 0
+                    val limit = command.data?.get("limit")?.toIntOrNull() ?: 50
+                    
+                    val images = GalleryManager(this).getImages(limit, offset)
+                    val response = JsonCommand("gallery_list", mapOf("data" to Gson().toJson(images), "offset" to offset.toString()))
                     if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
                 } else {
                     sendStatus("Error: Storage Permission Missing")
