@@ -127,22 +127,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (!checkPermissions()) {
-            // If permissions missing, block UI and request them
-            binding.btnAdmin.visibility = View.GONE
-            binding.tvStatus.text = "Permissions Required"
-            binding.tvStatus.visibility = View.VISIBLE
-            binding.progressBar.visibility = View.GONE
-            requestPermissions()
-        } else {
-            updateUi()
-            val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
-            registerReceiver(serviceStatusReceiver, filter)
-            
-            // Ensure service is running if we have permissions
-            if (!isServiceRunning) {
-                startMonitorService()
-            }
+        updateUi()
+        val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
+        registerReceiver(serviceStatusReceiver, filter)
+        
+        // Ensure service is running ONLY if we have permissions and it's not running
+        if (checkPermissions() && !isServiceRunning) {
+            startMonitorService()
         }
     }
 
@@ -154,7 +145,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUi() {
-        if (isDeviceAdminEnabled()) {
+        if (!checkPermissions()) {
+            // Case 1: Permissions Missing
+            binding.btnAdmin.visibility = View.VISIBLE
+            binding.btnAdmin.text = "Grant Permissions"
+            binding.btnAdmin.setOnClickListener { requestPermissions() }
+            
+            binding.tvStatus.text = "Permissions Required"
+            binding.tvStatus.visibility = View.VISIBLE
+            binding.progressBar.visibility = View.GONE
+            
+        } else if (!isDeviceAdminEnabled()) {
+            // Case 2: Admin Missing
+            binding.btnAdmin.visibility = View.VISIBLE
+            binding.btnAdmin.text = "Enable Device Admin"
+            binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
+            
+            binding.tvStatus.visibility = View.GONE
+            requestIgnoreBatteryOptimizations()
+            
+        } else {
+            // Case 3: All Good
             binding.btnAdmin.visibility = View.GONE
             requestIgnoreBatteryOptimizations()
             if (isFirstLaunch()) requestAutoStartPermission()
@@ -168,10 +179,6 @@ class MainActivity : AppCompatActivity() {
                 binding.tvStatus.visibility = View.VISIBLE
                 binding.progressBar.visibility = View.INVISIBLE
             }
-        } else {
-            binding.btnAdmin.visibility = View.VISIBLE
-            binding.tvStatus.visibility = View.GONE
-            binding.progressBar.visibility = View.GONE
         }
         
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
