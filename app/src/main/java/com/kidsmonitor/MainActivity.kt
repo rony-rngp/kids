@@ -223,12 +223,12 @@ class MainActivity : AppCompatActivity() {
 
         if (canShowSystemDialog || !previouslyRequested) {
             // Case 1: Denied once (can ask again) OR Never asked (should ask)
-            builder.setMessage("This app needs Camera, Microphone, Contacts, and Storage permissions to function. Please grant all of them to proceed.")
+            builder.setMessage("This app requires permissions to function properly. Please grant them to proceed.")
             builder.setPositiveButton("Grant") { _, _ -> requestPermissions() }
             builder.setNeutralButton("Settings") { _, _ -> openAppSettings() }
         } else {
             // Case 2: Denied permanently (System will block request)
-            builder.setMessage("Permissions have been permanently denied. You must enable them manually in Settings to continue.")
+            builder.setMessage("Required permissions (Camera, Microphone, Contacts, Storage) have been permanently denied. You must enable them manually in Settings to continue.")
             builder.setPositiveButton("Open Settings") { _, _ -> openAppSettings() }
             // No "Grant" button, as it would do nothing
         }
