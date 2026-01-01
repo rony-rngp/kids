@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MKL Monitor - Custom Domain Guide</title>
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text: #333333;
+            --code-bg: #2d2d2d;
+            --code-text: #f8f8f2;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--bg);
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+        }
+        h1 { color: var(--primary); margin: 0; }
+        h2 { color: var(--primary); border-left: 4px solid var(--primary); padding-left: 15px; margin-top: 30px; }
+        p { margin-bottom: 15px; }
+        .step {
+            background: var(--bg);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--secondary);
+        }
+        .step-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            display: block;
+            margin-bottom: 10px;
+            color: #444;
+        }
+        code {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.9em;
+        }
+        .benefit-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .benefit-item {
+            background: #eef6ff;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        th { background: #f2f2f2; }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Custom Domain Setup Guide</h1>
+        <p>Future-proof your <strong>MKL Kids Monitor</strong> application.</p>
+    </header>
+
+    <section>
+        <h2>Why use a Custom Domain?</h2>
+        <p>By default, your app uses <code>mkl-monitor.onrender.com</code>. While this works, it ties your app forever to Render. If you ever want to move your server, you would have to update every single phone app manually.</p>
+        
+        <div class="benefit-list">
+            <div class="benefit-item">
+                <strong>✓ Server Independence</strong><br>
+                Switch from Render to AWS, Google Cloud, or a Home PC without changing app code.
+            </div>
+            <div class="benefit-item">
+                <strong>✓ Professional Branding</strong><br>
+                <code>ws.yourdomain.com</code> looks much more professional and trustworthy.
+            </div>
+            <div class="benefit-item">
+                <strong>✓ Automatic SSL</strong><br>
+                Modern platforms (like Render/Cloudflare) provide free <code>wss://</code> security for your domain.
+            </div>
+            <div class="benefit-item">
+                <strong>✓ No Migration Pain</strong><br>
+                Upgrading or downgrading plans won't break your app connections.
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Step 1: Purchase a Domain</h2>
+        <p>Buy a domain name from a reputable registrar. Examples: <strong>Cloudflare, Namecheap, or GoDaddy</strong>.</p>
+        <div class="warning">
+            <strong>Pro Tip:</strong> Use <strong>Cloudflare</strong> if possible. It provides the fastest DNS updates and excellent security for free.
+        </div>
+    </section>
+
+    <section>
+        <h2>Step 2: Add Domain to Render</h2>
+        <div class="step">
+            <span class="step-title">Action in Render Dashboard:</span>
+            <ol>
+                <li>Open your <strong>Web Service</strong> (mkl-monitor).</li>
+                <li>Go to <strong>Settings</strong> &gt; <strong>Custom Domains</strong>.</li>
+                <li>Click <strong>Add Custom Domain</strong>.</li>
+                <li>Enter a subdomain (Recommended: <code>ws.yourdomain.com</code>).</li>
+                <li>Copy the <strong>CNAME Target</strong> provided (usually <code>mkl-monitor.onrender.com</code>).</li>
+            </ol>
+        </div>
+    </section>
+
+    <section>
+        <h2>Step 3: Update DNS Records</h2>
+        <p>Login to your Domain Registrar (where you bought the domain) and find <strong>DNS Management</strong>. Add the following record:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Name (Host)</th>
+                    <th>Value (Target)</th>
+                    <th>TTL</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>CNAME</td>
+                    <td><code>ws</code></td>
+                    <td><code>mkl-monitor.onrender.com</code></td>
+                    <td>Auto / 1 Hour</td>
+                </tr>
+            </tbody>
+        </table>
+        <p><em>Note: It may take 10 minutes to 2 hours for this change to spread across the internet.</em></p>
+    </section>
+
+    <section>
+        <h2>Step 4: Update Your Code</h2>
+        <p>Once Render shows the domain status as <strong>"Verified"</strong>, update your code to use the new permanent address.</p>
+
+        <h3>Android (MonitorService.kt)</h3>
+        <pre><code>// Change this line:
+private val REMOTE_SERVER_URL = "wss://ws.yourdomain.com/"</code></pre>
+
+        <h3>Web Viewer (viewer.html)</h3>
+        <pre><code>// Change this line:
+const RELAY_SERVER_URL = "wss://ws.yourdomain.com/";</code></pre>
+    </section>
+
+    <section>
+        <h2>What happens if I change servers?</h2>
+        <p>If you move your backend to a new service (e.g., AWS):</p>
+        <ol>
+            <li>Deploy your <code>server.js</code> to the new server.</li>
+            <li>Get the new IP or URL of that server.</li>
+            <li>Update the <strong>DNS CNAME Record</strong> (Step 3) to point to the new location.</li>
+            <li><strong>The App keeps working!</strong> Your phones still talk to <code>ws.yourdomain.com</code>, which now points to the new server.</li>
+        </ol>
+    </section>
+
+    <footer style="margin-top: 50px; text-align: center; color: var(--secondary); font-size: 0.8em;">
+        Generated for MKL Monitor Production Setup
+    </footer>
+</div>
+
+</body>
+</html>
