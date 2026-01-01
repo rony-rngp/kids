@@ -672,8 +672,14 @@
                         div.onclick = () => requestImage(img.id);
                         // Convert timestamp to date string
                         const dateStr = new Date(img.date * 1000).toLocaleDateString();
+                        
+                        let thumbHtml = `<i class="fas fa-image fa-2x"></i>`;
+                        if (img.thumbnail) {
+                            thumbHtml = `<img src="data:image/jpeg;base64,${img.thumbnail}" style="width:100%; height:100%; object-fit:cover;">`;
+                        }
+                        
                         div.innerHTML = `
-                            <div class="gallery-thumb" id="thumb-${img.id}"><i class="fas fa-image fa-2x"></i></div>
+                            <div class="gallery-thumb" id="thumb-${img.id}">${thumbHtml}</div>
                             <div class="gallery-name">${img.name}</div>
                             <div style="font-size:0.7em; color:#666;">${dateStr}</div>
                         `;

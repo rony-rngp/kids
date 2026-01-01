@@ -8,11 +8,11 @@ import android.provider.MediaStore
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 
-data class ImageData(val id: Long, val name: String, val date: Long)
+data class ImageData(val id: Long, val name: String, val date: Long, val thumbnail: String? = null)
 
 class GalleryManager(private val context: Context) {
 
-    fun getImages(limit: Int = 50): List<ImageData> {
+    fun getImages(limit: Int = 40): List<ImageData> {
         val images = ArrayList<ImageData>()
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -39,11 +39,42 @@ class GalleryManager(private val context: Context) {
                 val id = it.getLong(idColumn)
                 val name = it.getString(nameColumn) ?: "Unknown"
                 val date = it.getLong(dateColumn)
-                images.add(ImageData(id, name, date))
+                
+                // Fetch small thumbnail
+                val thumb = getThumbnail(id)
+                
+                images.add(ImageData(id, name, date, thumb))
                 count++
             }
         }
         return images
+    }
+
+    private fun getThumbnail(imageId: Long): String? {
+        return try {
+            val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, imageId)
+            
+            // Decode with inSampleSize to save memory/time
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = 8 // Large reduction for thumbnail
+            }
+            
+            val bitmap = context.contentResolver.openInputStream(contentUri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            }
+            
+            if (bitmap == null) return null
+            
+            // Resize to exact small size
+            val resized = Bitmap.createScaledBitmap(bitmap, 120, 120, true)
+            
+            val outputStream = ByteArrayOutputStream()
+            resized.compress(Bitmap.CompressFormat.JPEG, 40, outputStream)
+            val bytes = outputStream.toByteArray()
+            Base64.encodeToString(bytes, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun getImageBase64(imageId: Long): String? {
