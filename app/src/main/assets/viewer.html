@@ -742,18 +742,30 @@
     }
 
     function processArrayBuffer(buffer) {
-        const bytes = new Uint8Array(buffer);
-        // Basic JPEG check: SOI (FF D8)
-        if (bytes.length > 1000 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
-            frameCount++;
-            if (frameCount % 100 === 0) console.log(`Rx Video Frame #${frameCount} (${bytes.length} bytes)`);
-            
-            const blob = new Blob([buffer], { type: 'image/jpeg' });
-            const url = URL.createObjectURL(blob);
-            videoFeed.onload = () => URL.revokeObjectURL(url);
-            videoFeed.src = url;
-        } else {
-            playAudioChunk(buffer);
+        try {
+            const bytes = new Uint8Array(buffer);
+            // Basic JPEG check: SOI (FF D8)
+            if (bytes.length > 1000 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
+                frameCount++;
+                if (frameCount % 100 === 0) console.log(`Rx Video Frame #${frameCount} (${bytes.length} bytes)`);
+                
+                const blob = new Blob([buffer], { type: 'image/jpeg' });
+                const url = URL.createObjectURL(blob);
+                videoFeed.onload = () => URL.revokeObjectURL(url);
+                videoFeed.src = url;
+            } else {
+                playAudioChunk(buffer);
+            }
+        } catch (e) {
+            console.warn("Binary processing failed, attempting text decode:", e);
+            try {
+                const text = new TextDecoder("utf-8").decode(buffer);
+                if (text.trim().startsWith('{')) {
+                    handleJsonData(text);
+                }
+            } catch (err) {
+                console.error("Recovery failed", err);
+            }
         }
     }
 

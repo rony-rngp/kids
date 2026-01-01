@@ -129,7 +129,7 @@ wss.on('connection', (ws, req) => {
                  if (type === 'camera' && deviceId && rooms[deviceId]) {
                     rooms[deviceId].viewers.forEach(viewer => {
                         if (viewer.readyState === WebSocket.OPEN) {
-                            viewer.send(message);
+                            viewer.send(message.toString());
                         }
                     });
                  }
