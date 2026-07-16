@@ -38,17 +38,28 @@ class CameraStreamer(
     }
 
     fun startCamera(initialFacing: Int) {
-        isStreaming = true
         currentFacing = initialFacing
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
+            // FIX: Set isStreaming = true only after the camera provider is successfully
+            // obtained, not before. Setting it before meant stopCamera() could race and set
+            // it to false, then bindCameraUseCases() would still run and start streaming
+            // without the flag being set correctly.
+            isStreaming = true
             bindCameraUseCases()
         }, ContextCompat.getMainExecutor(context))
     }
 
     fun switchCamera(facing: Int) {
         Log.d("CameraStreamer", "Switching camera to $facing")
+        // FIX: Guard against switching when the camera is not active. cameraProvider could be
+        // null (e.g., startCamera has not completed yet or stopCamera was already called),
+        // which would cause a NullPointerException in bindCameraUseCases().
+        if (!isStreaming || cameraProvider == null) {
+            Log.w("CameraStreamer", "switchCamera called but camera is not active, ignoring.")
+            return
+        }
         if (currentFacing != facing) {
             currentFacing = facing
             rebindCameraUseCases()
@@ -91,6 +102,13 @@ class CameraStreamer(
         mainExecutor.execute {
             cameraProvider?.unbindAll()
         }
+    }
+
+    // FIX: Separate executor cleanup from stopCamera() so MonitorService can call stopCamera()
+    // during normal operation and only call shutdownExecutor() once on final destroy,
+    // without double-unbinding the camera provider.
+    fun shutdownExecutor() {
+        cameraExecutor.shutdown()
     }
 
     private inner class ImageAnalyzer : ImageAnalysis.Analyzer {

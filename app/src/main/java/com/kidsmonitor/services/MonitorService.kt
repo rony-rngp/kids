@@ -109,6 +109,10 @@ class MonitorService : LifecycleService(), CommandListener {
         connectivityManager.unregisterNetworkCallback(networkCallback)
         stopHeartbeatChecker()
         stopForegroundService()
+        // FIX: Shut down the camera executor thread pool to prevent thread leaks.
+        // Note: stopForegroundService() already calls stopCamera(); release() here only
+        // shuts down the executor — it does NOT double-stop the camera.
+        cameraStreamer.shutdownExecutor()
         broadcastStatus(false)
     }
 
@@ -229,6 +233,15 @@ class MonitorService : LifecycleService(), CommandListener {
                 } else {
                     Log.d("MonitorService", "Audio WebSocket Server already running.")
                 }
+
+                // FIX: Remove any previously queued progressRunnable callbacks before posting
+                // a new one. Without this, every call to ACTION_START_MONITORING (e.g., from
+                // onTaskRemoved restarts) would add another concurrent runnable, causing the
+                // progress counter to increment at an ever-increasing rate.
+                // FIX: Reset progress to 0 so the progress bar restarts from the beginning
+                // on each monitoring session instead of staying stuck at 100.
+                progressHandler.removeCallbacks(progressRunnable)
+                progress = 0
                 progressHandler.post(progressRunnable)
             }
             MonitorActions.ACTION_STOP_MONITORING -> {
@@ -240,6 +253,8 @@ class MonitorService : LifecycleService(), CommandListener {
 
     private fun stopForegroundService() {
         progressHandler.removeCallbacks(progressRunnable)
+        // FIX: Cancel any pending auto-stop so it doesn't fire after the service is stopped.
+        cancelAutoStop()
         stopCamera()
         stopMicrophone()
         if (mjpegServer.isRunning) {
@@ -295,7 +310,14 @@ class MonitorService : LifecycleService(), CommandListener {
             isMicOn = false
             audioStreamer?.stop()
             audioStreamer = null
-            updateNotification("Video monitoring active")
+            // FIX: Only show "Video monitoring active" if camera is actually still streaming.
+            // Previously this always showed the video-active message even when the camera
+            // had already been stopped (e.g., on client disconnect).
+            if (cameraStreamer.isStreaming()) {
+                updateNotification("Video monitoring active")
+            } else {
+                updateNotification("Servers running")
+            }
         }
     }
 
@@ -336,7 +358,7 @@ class MonitorService : LifecycleService(), CommandListener {
 
     private fun createNotification(text: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Kids Monitor")
+            .setContentTitle("MKL") // FIX: Updated from old "Kids Monitor" name to "MKL"
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)

@@ -27,7 +27,10 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private var bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
 
-    private val scope = CoroutineScope(Job() + Dispatchers.IO)
+    // FIX: Use a dedicated Job per recording session so stop() + start() can be called multiple
+    // times. A fixed Job() on a class-level scope is cancelled after the first stop() and can
+    // never launch new coroutines again.
+    private var recordingJob: Job? = null
 
     fun start() {
         if (isRecording) return
@@ -58,7 +61,8 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
         isRecording = true
         audioRecord?.startRecording()
 
-        scope.launch {
+        // FIX: Create a fresh Job for each recording session so the scope is always active.
+        recordingJob = CoroutineScope(Job() + Dispatchers.IO).launch {
             val buffer = ByteArray(bufferSize)
             while (this.isActive && isRecording) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
@@ -81,6 +85,8 @@ class AudioStreamer(private val onAudioChunk: (ByteArray) -> Unit) {
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
-        (scope.coroutineContext[Job] as Job).cancel()
+        // FIX: Cancel only the current session's job, not a class-level scope.
+        recordingJob?.cancel()
+        recordingJob = null
     }
 }

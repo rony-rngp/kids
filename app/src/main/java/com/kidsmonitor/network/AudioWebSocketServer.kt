@@ -8,7 +8,6 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
-import com.kidsmonitor.network.NetworkUtils // Ensure NetworkUtils is imported
 
 interface CommandListener {
     fun onCommandReceived(client: WebSocket, message: String)
@@ -18,7 +17,7 @@ interface CommandListener {
 class AudioWebSocketServer(port: Int, private val context: Context, private val commandListener: CommandListener?) : WebSocketServer(InetSocketAddress(port)) {
 
     private val clients = Collections.newSetFromMap(ConcurrentHashMap<WebSocket, Boolean>())
-    private var _isRunning: Boolean = false // Internal flag to track running state
+    private var _isRunning: Boolean = false
     val isOpen: Boolean
         get() = clients.isNotEmpty()
 
@@ -53,8 +52,16 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
     }
 
     override fun onStart() {
-        _isRunning = true // Server has started
-        // Also call super.onStart() if needed, but WebSocketServer handles starting its thread
+        _isRunning = true
+    }
+
+    // FIX: Override stop() to reset the _isRunning flag. Previously, once the server was
+    // started, isServerRunning always returned true even after stop() was called, causing
+    // MonitorService to believe the server was still running and skip re-starting it.
+    override fun stop() {
+        _isRunning = false
+        clients.clear()
+        super.stop()
     }
 
     fun broadcastAudio(chunk: ByteArray) {
@@ -80,5 +87,5 @@ class AudioWebSocketServer(port: Int, private val context: Context, private val 
     }
 
     val isServerRunning: Boolean
-        get() = _isRunning // Return the internal flag for running state
+        get() = _isRunning
 }
