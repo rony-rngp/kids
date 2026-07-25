@@ -12,7 +12,8 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
             intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
-            intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
+            intent.action == Intent.ACTION_MY_PACKAGE_REPLACED ||
+            intent.action == "com.kidsmonitor.action.RESTART_SERVICE"
         ) {
             val sharedPrefs: SharedPreferences = context.getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
             val isMonitoringEnabled = sharedPrefs.getBoolean("monitoring_enabled", false)

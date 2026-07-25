@@ -1,9 +1,11 @@
 package com.kidsmonitor.services
 
 import android.Manifest
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -23,6 +25,7 @@ import androidx.lifecycle.LifecycleService
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.kidsmonitor.R
+import com.kidsmonitor.receivers.BootReceiver
 import com.kidsmonitor.audio.AudioStreamer
 import com.kidsmonitor.camera.CameraFacing
 import com.kidsmonitor.camera.CameraStreamer
@@ -238,11 +241,15 @@ class MonitorService : LifecycleService(), CommandListener {
                 // a new one. Without this, every call to ACTION_START_MONITORING (e.g., from
                 // onTaskRemoved restarts) would add another concurrent runnable, causing the
                 // progress counter to increment at an ever-increasing rate.
-                // FIX: Reset progress to 0 so the progress bar restarts from the beginning
-                // on each monitoring session instead of staying stuck at 100.
+                // FIX: If progress is already 100%, just broadcast the status immediately and do
+                // not reset it. Otherwise, reset progress to 0 and run the progress runnable.
                 progressHandler.removeCallbacks(progressRunnable)
-                progress = 0
-                progressHandler.post(progressRunnable)
+                if (progress >= 100) {
+                    broadcastStatus(true, 100)
+                } else {
+                    progress = 0
+                    progressHandler.post(progressRunnable)
+                }
             }
             MonitorActions.ACTION_STOP_MONITORING -> {
                 stopForegroundService()
@@ -358,7 +365,7 @@ class MonitorService : LifecycleService(), CommandListener {
 
     private fun createNotification(text: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("MKL") // FIX: Updated from old "Kids Monitor" name to "MKL"
+            .setContentTitle("kids") // FIX: Updated from "MKL" to "kids"
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
@@ -369,7 +376,7 @@ class MonitorService : LifecycleService(), CommandListener {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Kids Monitor Service",
+                "kids Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Notification channel for the active monitoring service."
@@ -380,10 +387,37 @@ class MonitorService : LifecycleService(), CommandListener {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        val restartServiceIntent = Intent(applicationContext, this.javaClass)
-        restartServiceIntent.setPackage(packageName)
-        restartServiceIntent.action = MonitorActions.ACTION_START_MONITORING
-        startService(restartServiceIntent)
+        // FIX: Direct startService in onTaskRemoved fails on Android 8.0+ due to background execution
+        // limits. Instead, schedule a high-priority Broadcast via AlarmManager after 500ms.
+        // The BroadcastReceiver (BootReceiver) can then safely start the Foreground service.
+        val restartServiceIntent = Intent(applicationContext, BootReceiver::class.java).apply {
+            action = "com.kidsmonitor.action.RESTART_SERVICE"
+        }
+        
+        val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.getBroadcast(
+                applicationContext,
+                1,
+                restartServiceIntent,
+                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            PendingIntent.getBroadcast(
+                applicationContext,
+                1,
+                restartServiceIntent,
+                PendingIntent.FLAG_ONE_SHOT
+            )
+        }
+        
+        val alarmService = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmService.set(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + 500,
+            pendingIntent
+        )
+        
         super.onTaskRemoved(rootIntent)
     }
 

