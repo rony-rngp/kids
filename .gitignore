@@ -27,7 +27,8 @@ local.properties
 .kotlin_gradle/
 # Android Studio
 .idea/
-# Gradle
+node_modules/
+package-lock.json
 build/
 .gradle/
 *.iml

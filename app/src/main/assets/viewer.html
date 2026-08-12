@@ -667,35 +667,8 @@
             alert("Please enter a Device ID");
             return;
         }
-        
-        log("Validating Device ID...");
         btnConnect.disabled = true;
-        
-        const valWs = new WebSocket(RELAY_SERVER_URL);
-        valWs.onopen = () => valWs.send(JSON.stringify({ type: 'get_devices' }));
-        valWs.onmessage = (e) => {
-            try {
-                const msg = JSON.parse(e.data);
-                if (msg.type === 'device_list') {
-                    const exists = msg.devices.find(d => d.id === id);
-                    valWs.close();
-                    if (exists) {
-                        startConnection(id);
-                    } else {
-                        alert("Device ID not found on server.");
-                        log("Error: Device ID missing.");
-                        btnConnect.disabled = false;
-                    }
-                }
-            } catch(err) {
-                valWs.close();
-                startConnection(id);
-            }
-        };
-        valWs.onerror = () => {
-            valWs.close();
-            startConnection(id);
-        };
+        startConnection(id);
     }
 
     function startConnection(id) {

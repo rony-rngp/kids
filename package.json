@@ -1,0 +1,12 @@
+{
+  "name": "kids-monitor-relay-server",
+  "version": "1.0.0",
+  "description": "Standalone WebSocket Relay Server for Kids Monitor App",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
