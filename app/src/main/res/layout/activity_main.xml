@@ -83,6 +83,39 @@
                 android:layout_marginBottom="20dp"/>
 
             <Button
+                android:id="@+id/btnAdmin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enable Device Protection (Device Admin)"
+                android:textColor="#ffffff"
+                android:backgroundTint="#3b82f6"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="10dp" />
+
+            <Button
+                android:id="@+id/btnAutoStart"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enable ColorOS Auto Startup"
+                android:textColor="#ffffff"
+                android:backgroundTint="#10b981"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="10dp" />
+
+            <Button
+                android:id="@+id/btnBattery"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Disable Battery Optimization"
+                android:textColor="#ffffff"
+                android:backgroundTint="#8b5cf6"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp" />
+
+            <Button
                 android:id="@+id/btnHideIcon"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -124,18 +157,6 @@
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone" />
-
-    <Button
-        android:id="@+id/btnAdmin"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone" />
-
-    <Button
-        android:id="@+id/btnAutoStart"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone" />

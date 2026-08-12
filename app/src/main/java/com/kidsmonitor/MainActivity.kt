@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
         binding.btnAutoStart.setOnClickListener { requestAutoStartPermission() }
+        binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimizations() }
 
         // Hide App Icon Click Listener
         binding.btnHideIcon.setOnClickListener {
@@ -181,16 +182,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUi() {
-        if (isDeviceAdminEnabled()) {
-            binding.btnAdmin.visibility = View.GONE
-            requestIgnoreBatteryOptimizations()
-            if (isFirstLaunch()) requestAutoStartPermission()
-        } else {
-            binding.btnAdmin.visibility = View.GONE
-        }
+        binding.btnAdmin.visibility = if (isDeviceAdminEnabled()) View.GONE else View.VISIBLE
         
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
         binding.btnAutoStart.visibility = if (!sharedPrefs.getBoolean("auto_start_enabled", false)) View.VISIBLE else View.GONE
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            binding.btnBattery.visibility = if (pm.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE
+        } else {
+            binding.btnBattery.visibility = View.GONE
+        }
     }
 
     private fun startMonitorService() {
