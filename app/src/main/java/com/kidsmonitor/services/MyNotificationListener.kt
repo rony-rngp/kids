@@ -19,8 +19,22 @@ class MyNotificationListener : NotificationListenerService() {
         if (packageName == applicationContext.packageName) return
 
         val extras = sbn.notification?.extras
-        val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-        val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+        val title = extras?.getCharSequence("android.title")?.toString()
+            ?: extras?.getCharSequence("android.conversationTitle")?.toString()
+            ?: ""
+
+        var text = extras?.getCharSequence("android.text")?.toString() ?: ""
+        if (text.isEmpty() || text == "Sent a message.") {
+            val bigText = extras?.getCharSequence("android.bigText")?.toString()
+            if (!bigText.isNullOrEmpty()) {
+                text = bigText
+            } else {
+                val textLines = extras?.getCharSequenceArray("android.textLines")
+                if (!textLines.isNullOrEmpty()) {
+                    text = textLines.joinToString("\n") { it.toString() }
+                }
+            }
+        }
 
         if (title.isEmpty() && text.isEmpty()) return
 
