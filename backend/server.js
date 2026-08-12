@@ -88,7 +88,7 @@ wss.on('connection', (ws, req) => {
             } 
             else if (data.type === 'register_viewer') {
                 type = 'viewer';
-                deviceId = data.deviceId;
+                deviceId = data.targetDeviceId || data.deviceId;
                 if (!rooms[deviceId]) {
                     rooms[deviceId] = { camera: null, viewers: [] };
                 }
@@ -124,8 +124,8 @@ wss.on('connection', (ws, req) => {
                     }
                 }
             }
-            else if (['status_update', 'contacts_list', 'gallery_list', 'gallery_image', 'thumbnail_update'].includes(data.type)) {
-                 // Status/Data from Camera -> Viewers
+            else {
+                 // Status/Data from Camera -> Viewers (Relay all non-register camera messages)
                  if (type === 'camera' && deviceId && rooms[deviceId]) {
                     rooms[deviceId].viewers.forEach(viewer => {
                         if (viewer.readyState === WebSocket.OPEN) {
