@@ -106,7 +106,7 @@ wss.on('connection', (ws, req) => {
                 const deviceList = [];
                 // Return all known devices, marking them as online/offline
                 for (const id in knownDevices) {
-                    const isOnline = rooms[id] && rooms[id].camera && rooms[id].camera.readyState === WebSocket.OPEN;
+                    const isOnline = !!(rooms[id] && rooms[id].camera && rooms[id].camera.readyState === WebSocket.OPEN);
                     deviceList.push({
                         id: id,
                         name: knownDevices[id].name,

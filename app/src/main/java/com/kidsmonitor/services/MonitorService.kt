@@ -64,7 +64,15 @@ class MonitorService : LifecycleService() {
                 stopMicrophone()
                 sendStatus("Monitoring stopped (Timeout)")
             }
-            heartbeatHandler.postDelayed(this, 5000)
+            // Send periodic keep-alive ping to VPS relay server every 15s
+            if (::wsClient.isInitialized && wsClient.isOpen) {
+                try {
+                    wsClient.sendPing()
+                } catch (e: Exception) {
+                    Log.e("MonitorService", "Ping error: ${e.message}")
+                }
+            }
+            heartbeatHandler.postDelayed(this, 15000)
         }
     }
 
