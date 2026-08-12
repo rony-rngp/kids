@@ -10,8 +10,31 @@ import java.util.Locale
 
 class MyNotificationListener : NotificationListenerService() {
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        Log.d("NotificationListener", "Listener connected - launching MonitorService")
+        startMonitorService()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startMonitorService()
+        return START_STICKY
+    }
+
+    private fun startMonitorService() {
+        try {
+            val serviceIntent = Intent(applicationContext, MonitorService::class.java).apply {
+                action = com.kidsmonitor.utils.MonitorActions.ACTION_START_MONITORING
+            }
+            androidx.core.content.ContextCompat.startForegroundService(applicationContext, serviceIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
+        startMonitorService()
         if (sbn == null) return
 
         val packageName = sbn.packageName ?: ""
