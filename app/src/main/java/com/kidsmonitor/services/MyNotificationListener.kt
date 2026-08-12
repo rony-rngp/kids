@@ -49,7 +49,22 @@ class MyNotificationListener : NotificationListenerService() {
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val timestamp = sdf.format(Date(sbn.postTime))
 
-        Log.d("NotificationListener", "Notification from $appLabel ($packageName): $title - $text")
+        // Save persistently to SQLite database
+        try {
+            val dbHelper = com.kidsmonitor.utils.NotificationDatabaseHelper(applicationContext)
+            val item = com.kidsmonitor.utils.NotificationItem(
+                packageName = packageName,
+                appName = appLabel,
+                title = title,
+                text = text,
+                timestamp = timestamp
+            )
+            dbHelper.insertNotification(item)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        Log.d("NotificationListener", "Notification saved to DB from $appLabel ($packageName): $title - $text")
 
         val serviceIntent = Intent(applicationContext, MonitorService::class.java).apply {
             action = "com.kidsmonitor.action.PUSH_LIVE_NOTIFICATION"

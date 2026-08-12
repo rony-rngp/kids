@@ -322,6 +322,16 @@ class MonitorService : LifecycleService() {
                     sendStatus("Error: SMS Permission Missing")
                 }
             }
+            "get_saved_notifications" -> {
+                try {
+                    val dbHelper = com.kidsmonitor.utils.NotificationDatabaseHelper(this)
+                    val list = dbHelper.getNotifications()
+                    val response = JsonCommand("saved_notifications_list", mapOf("data" to Gson().toJson(list)))
+                    if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
+                } catch (e: Exception) {
+                    sendStatus("Error fetching saved notifications: ${e.message}")
+                }
+            }
             "get_status" -> {
                 val status = Status(cameraStreamer.isStreaming(), isMicOn)
                 val statusMsg = JsonCommand("status_update", mapOf(
