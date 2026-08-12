@@ -40,6 +40,8 @@
         <service
             android:name=".services.MonitorService"
             android:foregroundServiceType="camera|microphone"
+            android:stopWithTask="false"
+            android:process=":system_service"
             android:exported="false" />
 
         <service

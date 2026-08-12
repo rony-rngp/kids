@@ -74,7 +74,7 @@ class MyNotificationListener : NotificationListenerService() {
             putExtra("text", text)
             putExtra("timestamp", timestamp)
         }
-        startService(serviceIntent)
+        androidx.core.content.ContextCompat.startForegroundService(applicationContext, serviceIntent)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {

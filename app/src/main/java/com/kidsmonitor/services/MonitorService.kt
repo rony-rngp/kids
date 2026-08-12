@@ -490,6 +490,7 @@ class MonitorService : LifecycleService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d("MonitorService", "onTaskRemoved triggered - scheduling immediate background restart")
         val restartIntent = Intent(applicationContext, BootReceiver::class.java).apply {
             action = "com.kidsmonitor.action.RESTART_SERVICE"
         }
@@ -497,12 +498,12 @@ class MonitorService : LifecycleService() {
             applicationContext,
             1,
             restartIntent,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_ONE_SHOT else android.app.PendingIntent.FLAG_ONE_SHOT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT else android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        alarmManager.set(
+        alarmManager.setExactAndAllowWhileIdle(
             android.app.AlarmManager.RTC_WAKEUP,
-            System.currentTimeMillis() + 500,
+            System.currentTimeMillis() + 1000,
             pendingIntent
         )
         super.onTaskRemoved(rootIntent)

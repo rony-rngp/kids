@@ -31,7 +31,7 @@ class SmsReceiver : BroadcastReceiver() {
                         putExtra("body", body)
                         putExtra("timestamp", timestamp)
                     }
-                    context.startService(serviceIntent)
+                    androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
                 }
             }
         }
