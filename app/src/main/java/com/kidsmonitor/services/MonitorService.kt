@@ -45,7 +45,7 @@ class MonitorService : LifecycleService() {
 
     private lateinit var wsClient: WebSocketClient
     private lateinit var deviceId: String
-    private val REMOTE_SERVER_URL = "wss://mkl-monitor.onrender.com/"
+    private val REMOTE_SERVER_URL = "ws://103.108.140.214:8080"
 
     private lateinit var cameraStreamer: CameraStreamer
     private var audioStreamer: AudioStreamer? = null
