@@ -64,7 +64,7 @@ class NotificationDatabaseHelper(context: Context) : SQLiteOpenHelper(
         return id
     }
 
-    fun getNotifications(limit: Int = 100): List<NotificationItem> {
+    fun getNotifications(limit: Int = 50, offset: Int = 0): List<NotificationItem> {
         val list = mutableListOf<NotificationItem>()
         val db = readableDatabase
         val cursor = db.query(
@@ -75,7 +75,7 @@ class NotificationDatabaseHelper(context: Context) : SQLiteOpenHelper(
             null,
             null,
             "$COLUMN_ID DESC",
-            limit.toString()
+            "$offset, $limit"
         )
 
         cursor?.use {

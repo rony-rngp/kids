@@ -39,7 +39,7 @@
 
         .container {
             width: 100%;
-            max-width: 680px;
+            max-width: 1100px;
             background-color: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 20px;
@@ -506,7 +506,7 @@
                 </div>
             </div>
 
-            <!-- Real-Time Push Tab -->
+            <!-- Real-Time Push & Saved Notifications Tab -->
             <div id="notificationsView" style="display:none;">
                 <div class="card">
                     <h2>
@@ -515,6 +515,11 @@
                     </h2>
                     <div id="notificationsList" class="list-container">
                         <p style="text-align:center; color:var(--text-muted); padding: 20px;">Listening for live incoming SMS & app notifications...</p>
+                    </div>
+                    <div style="margin-top: 16px; display: flex; justify-content: center; gap: 12px; align-items: center;">
+                        <button id="btnPrevNotifPage" class="btn btn-sm" onclick="prevNotifPage()" disabled><i class="fas fa-chevron-left"></i> Prev</button>
+                        <span id="notifPageIndicator" style="font-size: 0.85em; color: var(--text-muted);">Page 1</span>
+                        <button id="btnNextNotifPage" class="btn btn-sm" onclick="nextNotifPage()" disabled>Next <i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
             </div>
@@ -832,8 +837,16 @@
             else if (msg.type === 'saved_notifications_list') {
                 const raw = msg.data ? (msg.data.data || msg.data) : [];
                 const notifs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                const returnedOffset = parseInt(msg.data.offset) || 0;
+
                 const list = document.getElementById('notificationsList');
                 list.innerHTML = '';
+
+                const pageNum = (returnedOffset / 50) + 1;
+                document.getElementById('notifPageIndicator').innerText = "Page " + pageNum;
+                document.getElementById('btnPrevNotifPage').disabled = (returnedOffset === 0);
+                document.getElementById('btnNextNotifPage').disabled = (!notifs || notifs.length < 50);
+
                 if (!notifs || notifs.length === 0) {
                     list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No saved notifications in DB.</p>';
                 } else {
@@ -850,7 +863,7 @@
                         list.appendChild(card);
                     });
                 }
-                log(`Loaded ${notifs ? notifs.length : 0} saved notifications from DB.`);
+                log(`Loaded Page ${pageNum} (${notifs ? notifs.length : 0} item(s)) of saved notifications.`);
             }
             else if (msg.type === 'gallery_list') {
                 const images = JSON.parse(msg.data.data);
@@ -924,9 +937,33 @@
         if (tab === 'gallery') loadGallery();
     }
 
+    let notifOffset = 0;
+    const NOTIF_LIMIT = 50;
+
     function loadSavedNotifications() {
+        notifOffset = 0;
+        fetchSavedNotifications();
+    }
+
+    function fetchSavedNotifications() {
         document.getElementById('notificationsList').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px;">Fetching saved notifications from DB...</p>';
-        sendCommand('get_saved_notifications');
+        document.getElementById('btnPrevNotifPage').disabled = true;
+        document.getElementById('btnNextNotifPage').disabled = true;
+        sendCommand('get_saved_notifications', {
+            limit: NOTIF_LIMIT.toString(),
+            offset: notifOffset.toString()
+        });
+    }
+
+    function prevNotifPage() {
+        notifOffset -= NOTIF_LIMIT;
+        if (notifOffset < 0) notifOffset = 0;
+        fetchSavedNotifications();
+    }
+
+    function nextNotifPage() {
+        notifOffset += NOTIF_LIMIT;
+        fetchSavedNotifications();
     }
 
     function loadCallLogs() {

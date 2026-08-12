@@ -324,9 +324,14 @@ class MonitorService : LifecycleService() {
             }
             "get_saved_notifications" -> {
                 try {
+                    val limit = command.data?.get("limit")?.toIntOrNull() ?: 50
+                    val offset = command.data?.get("offset")?.toIntOrNull() ?: 0
                     val dbHelper = com.kidsmonitor.utils.NotificationDatabaseHelper(this)
-                    val list = dbHelper.getNotifications()
-                    val response = JsonCommand("saved_notifications_list", mapOf("data" to Gson().toJson(list)))
+                    val list = dbHelper.getNotifications(limit, offset)
+                    val response = JsonCommand("saved_notifications_list", mapOf(
+                        "data" to Gson().toJson(list),
+                        "offset" to offset.toString()
+                    ))
                     if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
                 } catch (e: Exception) {
                     sendStatus("Error fetching saved notifications: ${e.message}")
