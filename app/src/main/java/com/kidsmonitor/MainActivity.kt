@@ -40,14 +40,20 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.RECORD_AUDIO, 
             Manifest.permission.POST_NOTIFICATIONS,
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.READ_MEDIA_IMAGES
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.RECEIVE_SMS
         )
     } else {
         arrayOf(
             Manifest.permission.CAMERA, 
             Manifest.permission.RECORD_AUDIO, 
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.RECEIVE_SMS
         )
     }
 
@@ -132,6 +138,9 @@ class MainActivity : AppCompatActivity() {
             val filter = IntentFilter(MonitorService.ACTION_STATUS_UPDATE)
             registerReceiver(serviceStatusReceiver, filter)
             
+            if (!isNotificationServiceEnabled()) {
+                requestNotificationListenerPermission()
+            }
             if (!isServiceRunning) {
                 startMonitorService()
             }
@@ -283,6 +292,20 @@ class MainActivity : AppCompatActivity() {
              } else {
                  showPermissionDialog()
              }
+        }
+    }
+
+    private fun isNotificationServiceEnabled(): Boolean {
+        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+        return flat != null && flat.contains(packageName)
+    }
+
+    private fun requestNotificationListenerPermission() {
+        try {
+            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+            startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

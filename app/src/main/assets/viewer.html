@@ -1,314 +1,402 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Remote Kids Monitor Control</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+    <title>Remote Kids Monitor Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #007bff;
-            --secondary-color: #6c757d;
-            --background-color: #121212;
-            --surface-color: #1e1e1e;
-            --on-surface-color: #ffffff;
-            --error-color: #cf6679;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            background-color: var(--background-color);
-            color: var(--on-surface-color);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-            box-sizing: border-box;
+            align-items: flex-start;
+            padding: 24px 16px;
         }
 
         .container {
             width: 100%;
-            max-width: 500px;
-            background-color: var(--surface-color);
-            border-radius: 12px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            max-width: 680px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
             overflow: hidden;
         }
 
         header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-size: 1.5em;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.35em;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+        }
+
+        header .brand i {
+            color: var(--primary);
+            background: rgba(59, 130, 246, 0.15);
+            padding: 10px;
+            border-radius: 12px;
+        }
+
+        header .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.82em;
+            font-weight: 600;
+        }
+
+        header .live-badge .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
         main {
-            padding: 20px;
+            padding: 24px;
         }
 
-        .section {
+        .card {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
             margin-bottom: 24px;
         }
 
-        .device-item {
-            background-color: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .device-item:hover {
-            background-color: #333;
-        }
-
-        .device-info {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .device-name {
-            font-weight: bold;
-            font-size: 1.05em;
-        }
-
-        .device-id {
-            font-size: 0.85em;
-            color: var(--secondary-color);
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.85em;
-        }
-
-        .dot {
-            height: 8px;
-            width: 8px;
-            border-radius: 50%;
-        }
-
         h2 {
-            font-size: 1.2em;
-            margin-bottom: 12px;
-            color: var(--primary-color);
-            border-bottom: 1px solid var(--primary-color);
-            padding-bottom: 8px;
+            font-size: 1.05em;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        h2 i {
+            margin-right: 8px;
+            color: var(--primary);
         }
 
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        
-        .input-row {
-            display: flex;
-            gap: 8px;
+            gap: 12px;
         }
 
-        .input-group p {
-            margin: 0;
-            font-size: 0.9em;
-            color: var(--secondary-color);
+        .input-row {
+            display: flex;
+            gap: 10px;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 12px;
-            font-size: 1em;
-            background-color: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            color: var(--on-surface-color);
-            border-radius: 8px;
-            box-sizing: border-box;
-            transition: border-color 0.3s;
-            flex-grow: 1;
-        }
-        
-        #deviceId {
-            flex-grow: 1;
+            padding: 14px 16px;
+            font-size: 0.95em;
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            color: #ffffff;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.2s ease;
         }
 
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
         }
 
-        button {
-            padding: 12px;
-            font-size: 1em;
+        .btn {
+            padding: 12px 20px;
+            font-size: 0.95em;
+            font-weight: 600;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
             color: white;
-            background-color: var(--primary-color);
-            transition: background-color 0.3s;
-            display: flex;
+            background-color: var(--primary);
+            transition: all 0.2s ease;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
 
-        button:hover {
-            background-color: #0056b3;
+        .btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
         }
 
-        button.disconnect {
-            background-color: var(--error-color);
-        }
-        
-        button.disconnect:hover {
-            background-color: #b04f5d;
+        .btn:active {
+            transform: translateY(0);
         }
 
-        #status {
-            margin-top: 10px;
-            padding: 12px;
-            border: 1px solid #3a3a3a;
-            background-color: #2a2a2a;
-            border-radius: 8px;
-            min-height: 100px;
-            white-space: pre-wrap;
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.9em;
-            overflow-y: auto;
+        .btn-red {
+            background-color: var(--accent-red);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
         }
 
-        #videoFeed {
-            width: 100%;
-            height: auto;
-            border: 1px solid #3a3a3a;
-            margin-top: 16px;
-            display: none; /* Hidden by default */
+        .btn-red:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.82em;
             border-radius: 8px;
         }
-        
-        .controls {
-            display: none; /* Hidden until connected */
-            margin-top: 20px;
-        }
-        
-        .control-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        
-        .control-row button {
-            flex: 1;
-            margin: 0 5px;
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
 
-        /* Tabs & New Views */
-        .nav-tabs {
+        /* Nav Pills / Tabs */
+        .nav-pills {
             display: flex;
+            gap: 6px;
+            background: #0f172a;
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--card-border);
             margin-bottom: 20px;
-            background: #2a2a2a;
-            border-radius: 8px;
-            overflow: hidden;
+            overflow-x: auto;
+            scrollbar-width: none;
         }
-        .nav-btn {
+        
+        .nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-link {
             flex: 1;
+            white-space: nowrap;
             background: transparent;
             border: none;
-            padding: 15px;
-            border-radius: 0;
-            color: #888;
-        }
-        .nav-btn.active {
-            background: var(--primary-color);
-            color: white;
-        }
-        .nav-btn:hover:not(.active) {
-            background: #333;
-            color: white;
-        }
-        
-        .contact-item {
-            padding: 10px;
-            border-bottom: 1px solid #333;
-        }
-        .contact-name { font-weight: bold; }
-        .contact-number { color: #aaa; font-size: 0.9em; }
-
-        .gallery-item {
-            background: #2a2a2a;
-            border-radius: 4px;
-            overflow: hidden;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-size: 0.88em;
+            font-weight: 600;
             cursor: pointer;
-            text-align: center;
-            padding: 5px;
-        }
-        .gallery-thumb {
-            width: 100%;
-            height: 100px;
-            object-fit: cover;
-            background: #333;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #666;
+            gap: 6px;
         }
-        .gallery-name {
-            font-size: 0.8em;
-            white-space: nowrap;
+
+        .nav-link.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-link:hover:not(.active) {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* List Items */
+        .list-container {
+            max-height: 420px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+
+        .list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .list-container::-webkit-scrollbar-thumb {
+            background: var(--card-border);
+            border-radius: 10px;
+        }
+
+        .data-card {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .data-card:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .data-title {
+            font-weight: 600;
+            font-size: 0.95em;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .data-sub {
+            font-size: 0.82em;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Device List Item */
+        .device-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .device-card:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .status-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-online { background-color: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+        .status-offline { background-color: var(--text-muted); }
+
+        /* Gallery Grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+            max-height: 450px;
+            overflow-y: auto;
+        }
+
+        .gallery-card {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
             overflow: hidden;
-            text-overflow: ellipsis;
-            padding: 4px;
+            cursor: pointer;
+            transition: transform 0.2s;
         }
-        
-        /* Modal for Image Viewing */
+
+        .gallery-card:hover {
+            transform: scale(1.03);
+            border-color: var(--primary);
+        }
+
+        .gallery-thumb-wrapper {
+            width: 100%;
+            height: 100px;
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        /* Modal */
         #imageModal {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(8px);
             z-index: 1000;
             display: none;
             justify-content: center;
             align-items: center;
             flex-direction: column;
-        }
-        #fullImage {
-            max-width: 90%;
-            max-height: 80%;
-            border: 2px solid white;
-        }
-        #closeModal {
-            margin-top: 20px;
-            background: var(--error-color);
-            width: auto;
-            padding: 10px 20px;
-        }
-        
-        /* Spinner */
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid var(--primary-color);
-            width: 30px;
-            height: 30px;
-            -webkit-animation: spin 1s linear infinite; /* Safari */
-            animation: spin 1s linear infinite;
-            display: inline-block;
+            padding: 20px;
         }
 
-        /* Spinner for Full Image */
-        #imgSpinner {
-            position: absolute;
-            z-index: 1001;
+        #fullImage {
+            max-width: 95%;
+            max-height: 80vh;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+            border: 1px solid var(--card-border);
+        }
+
+        /* Log Box */
+        #status {
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 14px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.84em;
+            color: #38bdf8;
+            min-height: 90px;
+            max-height: 160px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid var(--primary);
+            width: 24px;
+            height: 24px;
+            animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
@@ -320,95 +408,149 @@
 <body>
 
 <div id="imageModal">
-    <div id="imgSpinner" class="spinner"></div>
+    <div id="imgSpinner" class="spinner" style="width:40px; height:40px;"></div>
     <img id="fullImage" src="" style="display:none;" onload="this.style.display='block'; document.getElementById('imgSpinner').style.display='none';">
-    <button id="closeModal" onclick="closeModal()">Close</button>
+    <button class="btn btn-red" style="margin-top:20px;" onclick="closeModal()"><i class="fas fa-times"></i> Close Preview</button>
 </div>
 
 <div class="container">
     <header>
-        <i class="fas fa-video"></i> Remote Kids Monitor
+        <div class="brand">
+            <i class="fas fa-shield-halved"></i>
+            <span>Kids Monitor</span>
+        </div>
+        <div class="live-badge">
+            <div class="pulse"></div>
+            <span>System Active</span>
+        </div>
     </header>
 
     <main>
-        <div class="section">
-            <h2><i class="fas fa-link"></i> Connection</h2>
+        <!-- Connection Panel -->
+        <div class="card">
+            <h2><span><i class="fas fa-satellite-dish"></i> Target Connection</span></h2>
             <div class="input-group">
-                <p>Enter the Device ID manually or select from the list below.</p>
                 <div class="input-row">
-                    <input type="text" id="deviceId" placeholder="Enter Device ID">
+                    <input type="text" id="deviceId" placeholder="Enter 6-Digit Device ID">
                 </div>
-                <div class="button-group">
-                    <button id="btnConnect" onclick="connect()"><i class="fas fa-plug"></i> Connect</button>
-                    <button id="btnDisconnect" class="disconnect" onclick="disconnect()" disabled><i class="fas fa-times"></i> Disconnect</button>
+                <div class="button-grid">
+                    <button id="btnConnect" class="btn" onclick="connect()"><i class="fas fa-link"></i> Connect Target</button>
+                    <button id="btnDisconnect" class="btn btn-red" onclick="disconnect()" disabled><i class="fas fa-unlink"></i> Disconnect</button>
                 </div>
             </div>
         </div>
 
-        <div id="controls" class="controls">
-            <div class="nav-tabs">
-                <button class="nav-btn active" onclick="switchTab('monitor')" id="tab-monitor"><i class="fas fa-video"></i> Monitor</button>
-                <button class="nav-btn" onclick="switchTab('contacts')" id="tab-contacts"><i class="fas fa-address-book"></i> Contacts</button>
-                <button class="nav-btn" onclick="switchTab('gallery')" id="tab-gallery"><i class="fas fa-images"></i> Gallery</button>
+        <!-- Interactive Control Hub -->
+        <div id="controls" style="display: none;">
+            <div class="nav-pills">
+                <button class="nav-link active" onclick="switchTab('monitor')" id="tab-monitor"><i class="fas fa-video"></i> Monitor</button>
+                <button class="nav-link" onclick="switchTab('contacts')" id="tab-contacts"><i class="fas fa-address-book"></i> Contacts</button>
+                <button class="nav-link" onclick="switchTab('calls')" id="tab-calls"><i class="fas fa-phone"></i> Calls</button>
+                <button class="nav-link" onclick="switchTab('sms')" id="tab-sms"><i class="fas fa-comments"></i> SMS</button>
+                <button class="nav-link" onclick="switchTab('notifications')" id="tab-notifications"><i class="fas fa-bell"></i> Live Push</button>
+                <button class="nav-link" onclick="switchTab('gallery')" id="tab-gallery"><i class="fas fa-images"></i> Gallery</button>
             </div>
 
+            <!-- Monitor Tab -->
             <div id="monitorView">
-                 <h2><i class="fas fa-gamepad"></i> Controls</h2>
-                 <div class="control-row">
-                     <button id="btnStartMonitor" onclick="startMonitoring()"><i class="fas fa-play"></i> Start Monitor</button>
-                     <button id="btnStopMonitor" class="disconnect" onclick="stopMonitoring()" style="display: none;"><i class="fas fa-stop"></i> Stop Monitor</button>
-                 </div>
-                 <div class="control-row">
-                     <button onclick="toggleCamera()"><i class="fas fa-sync-alt"></i> Switch Camera</button>
-                     <button id="btnAudio" onclick="toggleAudio()"><i class="fas fa-microphone"></i> Start Audio</button>
-                 </div>
-                 <img id="videoFeed" alt="Video Stream" style="width: 100%; border-radius: 8px; border: 1px solid #3a3a3a; display: none; margin-top: 16px;">
+                <div class="card">
+                    <h2><span><i class="fas fa-sliders"></i> Stream Controls</span></h2>
+                    <div class="button-grid" style="margin-bottom: 12px;">
+                        <button id="btnStartMonitor" class="btn" onclick="startMonitoring()"><i class="fas fa-play"></i> Start Live Video</button>
+                        <button id="btnStopMonitor" class="btn btn-red" onclick="stopMonitoring()" style="display: none;"><i class="fas fa-square"></i> Stop Video</button>
+                        <button class="btn" onclick="toggleCamera()"><i class="fas fa-camera-rotate"></i> Switch Camera</button>
+                    </div>
+                    <div class="button-grid">
+                        <button id="btnAudio" class="btn" onclick="toggleAudio()"><i class="fas fa-microphone"></i> Start Audio</button>
+                    </div>
+                    <img id="videoFeed" alt="Live Camera Stream" style="width: 100%; border-radius: 12px; border: 1px solid var(--card-border); display: none; margin-top: 16px;">
+                </div>
             </div>
 
+            <!-- Contacts Tab -->
             <div id="contactsView" style="display:none;">
-                <div class="section">
-                    <h2><i class="fas fa-address-book"></i> Contacts <button onclick="loadContacts()" style="float:right; padding: 5px 10px; width:auto;"><i class="fas fa-sync"></i></button></h2>
-                    <div id="contactsList" style="max-height: 400px; overflow-y: auto;">
-                        <p style="text-align:center; color:#666; padding: 20px;">Click refresh to load.</p>
+                <div class="card">
+                    <h2>
+                        <span><i class="fas fa-address-book"></i> Contact List</span>
+                        <button class="btn btn-sm" onclick="loadContacts()"><i class="fas fa-rotate"></i> Sync</button>
+                    </h2>
+                    <div id="contactsList" class="list-container">
+                        <p style="text-align:center; color:var(--text-muted); padding: 20px;">Tap Sync to load contacts.</p>
                     </div>
                 </div>
             </div>
 
+            <!-- Calls Tab -->
+            <div id="callsView" style="display:none;">
+                <div class="card">
+                    <h2>
+                        <span><i class="fas fa-phone-volume"></i> Call History</span>
+                        <button class="btn btn-sm" onclick="loadCallLogs()"><i class="fas fa-rotate"></i> Sync</button>
+                    </h2>
+                    <div id="callsList" class="list-container">
+                        <p style="text-align:center; color:var(--text-muted); padding: 20px;">Tap Sync to load call history.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SMS History Tab -->
+            <div id="smsView" style="display:none;">
+                <div class="card">
+                    <h2>
+                        <span><i class="fas fa-comments"></i> SMS Records</span>
+                        <button class="btn btn-sm" onclick="loadSmsLogs()"><i class="fas fa-rotate"></i> Sync</button>
+                    </h2>
+                    <div id="smsList" class="list-container">
+                        <p style="text-align:center; color:var(--text-muted); padding: 20px;">Tap Sync to load SMS logs.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Push Tab -->
+            <div id="notificationsView" style="display:none;">
+                <div class="card">
+                    <h2><span><i class="fas fa-bolt"></i> Real-time Push Feed</span></h2>
+                    <div id="notificationsList" class="list-container">
+                        <p style="text-align:center; color:var(--text-muted); padding: 20px;">Listening for live incoming SMS & app notifications...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gallery Tab -->
             <div id="galleryView" style="display:none;">
-                 <div class="section">
-                    <h2><i class="fas fa-images"></i> Gallery <button onclick="loadGallery()" style="float:right; padding: 5px 10px; width:auto;"><i class="fas fa-sync"></i></button></h2>
-                    
-                    <div id="galleryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; max-height: 500px; overflow-y: auto;">
-                        <p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">Click refresh to load.</p>
+                <div class="card">
+                    <h2>
+                        <span><i class="fas fa-photo-film"></i> Device Gallery</span>
+                        <button class="btn btn-sm" onclick="loadGallery()"><i class="fas fa-rotate"></i> Refresh</button>
+                    </h2>
+                    <div id="galleryGrid" class="gallery-grid">
+                        <p style="text-align:center; color:var(--text-muted); grid-column: 1/-1; padding: 20px;">Tap Refresh to load gallery thumbnails.</p>
                     </div>
-
-                    <div class="pagination-controls" style="margin-top: 15px; display: flex; justify-content: center; gap: 15px; align-items: center;">
-                        <button id="btnPrevPage" onclick="prevPage()" disabled style="width: auto; padding: 8px 16px;"><i class="fas fa-chevron-left"></i> Prev</button>
-                        <span id="pageIndicator" style="color: #fff;">Page 1</span>
-                        <button id="btnNextPage" onclick="nextPage()" disabled style="width: auto; padding: 8px 16px;">Next <i class="fas fa-chevron-right"></i></button>
+                    <div style="margin-top: 16px; display: flex; justify-content: center; gap: 12px; align-items: center;">
+                        <button id="btnPrevPage" class="btn btn-sm" onclick="prevPage()" disabled><i class="fas fa-chevron-left"></i> Prev</button>
+                        <span id="pageIndicator" style="font-size: 0.85em; color: var(--text-muted);">Page 1</span>
+                        <button id="btnNextPage" class="btn btn-sm" onclick="nextPage()" disabled>Next <i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Moved Status and Device List below controls for better layout or keep them? 
-             Actually, let's keep device list and status VISIBLE always, so user knows what's up.
-             But "controls" div was hidden until connect. 
-             So the tabs will only show when connected. Correct.
-        -->
 
-        <div class="section" style="margin-top: 20px;">
-            <h2><i class="fas fa-list"></i> Registered Devices <button id="btnScan" onclick="scanDevices()" style="float: right; padding: 4px 8px; font-size: 0.8em; width: auto;"><i class="fas fa-sync-alt"></i></button></h2>
-            <div id="deviceList">
-                <p style="color: #666; font-size: 0.9em; text-align: center;">Loading devices...</p>
+        <!-- Devices List -->
+        <div class="card">
+            <h2>
+                <span><i class="fas fa-network-wired"></i> Registered Devices</span>
+                <button id="btnScan" class="btn btn-sm" onclick="scanDevices()"><i class="fas fa-rotate"></i></button>
+            </h2>
+            <div id="deviceList" style="display: flex; flex-direction: column; gap: 8px;">
+                <p style="color: var(--text-muted); font-size: 0.9em; text-align: center;">Scanning online devices...</p>
             </div>
         </div>
 
-        <div class="section">
-            <h2><i class="fas fa-info-circle"></i> Status</h2>
-            <div id="status">Not Connected</div>
+        <!-- Terminal Status Log -->
+        <div class="card" style="margin-bottom: 0;">
+            <h2><span><i class="fas fa-terminal"></i> Activity Log</span></h2>
+            <div id="status">System Initialized. Awaiting target selection...</div>
         </div>
-
     </main>
 </div>
 
@@ -421,88 +563,94 @@
     let nextStartTime = 0;
     let isAudioOn = false;
     let isMonitoring = false;
-    let audioQueue = [];
     let frameCount = 0;
-    
-    // UI Elements - Declared BEFORE use
+
     const statusDiv = document.getElementById('status');
     const btnConnect = document.getElementById('btnConnect');
     const btnDisconnect = document.getElementById('btnDisconnect');
-    const videoFeed = document.getElementById('videoFeed');
-    const controlsDiv = document.getElementById('controls');
     const deviceIdInput = document.getElementById('deviceId');
+    const controlsDiv = document.getElementById('controls');
+    const videoFeed = document.getElementById('videoFeed');
     const btnStartMonitor = document.getElementById('btnStartMonitor');
     const btnStopMonitor = document.getElementById('btnStopMonitor');
     const btnAudio = document.getElementById('btnAudio');
     const deviceListDiv = document.getElementById('deviceList');
     const btnScan = document.getElementById('btnScan');
 
-    let statusLog = [];
-
-    function log(message) {
-        const timestamp = new Date().toLocaleTimeString();
-        statusLog.unshift(`[${timestamp}] ${message}`);
-        if (statusLog.length > 7) statusLog.pop();
-        statusDiv.innerHTML = statusLog.join('<br>');
+    function log(msg) {
+        const time = new Date().toLocaleTimeString();
+        statusDiv.innerText = `[${time}] ${msg}\n` + statusDiv.innerText;
     }
 
     function scanDevices() {
         btnScan.disabled = true;
-        btnScan.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>';
+        btnScan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
+        let handled = false;
         const scanWs = new WebSocket(RELAY_SERVER_URL);
         
-        scanWs.onopen = () => {
-            scanWs.send(JSON.stringify({ type: 'get_devices' }));
-        };
+        const timeout = setTimeout(() => {
+            if (!handled) {
+                handled = true;
+                try { scanWs.close(); } catch(e){}
+                btnScan.disabled = false;
+                btnScan.innerHTML = '<i class="fas fa-rotate"></i>';
+                deviceListDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9em; text-align: center;">Scan timed out. Click refresh to retry.</p>';
+            }
+        }, 8000);
+
+        scanWs.onopen = () => scanWs.send(JSON.stringify({ type: 'get_devices' }));
         
-        scanWs.onmessage = (event) => {
+        scanWs.onmessage = (e) => {
+            if (handled) return;
             try {
-                const msg = JSON.parse(event.data);
+                const msg = JSON.parse(e.data);
                 if (msg.type === 'device_list') {
+                    handled = true;
+                    clearTimeout(timeout);
                     deviceListDiv.innerHTML = '';
-                    if (msg.devices.length === 0) {
-                        deviceListDiv.innerHTML = '<p style="color: #666; font-size: 0.9em; text-align: center; padding: 10px;">No devices registered yet.</p>';
+                    const devices = msg.devices || [];
+                    if (devices.length === 0) {
+                        deviceListDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9em; text-align: center;">No active devices registered.</p>';
                     } else {
-                        msg.devices.forEach(device => {
-                            const item = document.createElement('div');
-                            item.className = 'device-item';
-                            const statusColor = device.online ? '#28a745' : '#6c757d';
-                            const statusText = device.online ? 'Online' : 'Offline';
-                            
-                            item.innerHTML = `
-                                <div class="device-info">
-                                    <span class="device-name">${device.name}</span>
-                                    <span class="device-id">ID: ${device.id}</span>
+                        devices.forEach(d => {
+                            const card = document.createElement('div');
+                            card.className = 'device-card';
+                            card.onclick = () => selectDevice(d.id);
+                            const dotClass = d.online ? 'status-online' : 'status-offline';
+                            const statusText = d.online ? 'Online' : 'Offline';
+                            card.innerHTML = `
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.95em;">${d.name || 'Unnamed Device'}</div>
+                                    <div style="font-size: 0.8em; color: var(--text-muted);">ID: ${d.id}</div>
                                 </div>
-                                <div class="status-indicator">
-                                    <div class="dot" style="background-color: ${statusColor}"></div>
-                                    <span style="color: ${statusColor}">${statusText}</span>
+                                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82em; color: var(--text-muted);">
+                                    <span class="status-dot ${dotClass}"></span> ${statusText}
                                 </div>
                             `;
-                            item.onclick = () => selectDevice(device.id);
-                            deviceListDiv.appendChild(item);
+                            deviceListDiv.appendChild(card);
                         });
+                        log(`Found ${devices.length} registered device(s).`);
                     }
-                    scanWs.close(); // Close only after receiving the list
+                    scanWs.close();
                 }
-            } catch(e) {
-                console.error("Scan error", e);
+            } catch (err) {
+                console.error("Scan Error", err);
             }
-            // scanWs.close(); // Don't close here, wait for specific message
+            btnScan.disabled = false;
+            btnScan.innerHTML = '<i class="fas fa-rotate"></i>';
         };
-        
-        scanWs.onclose = () => {
-             btnScan.disabled = false;
-             btnScan.innerHTML = '<i class="fas fa-sync-alt"></i>';
-        };
-        
-        scanWs.onerror = () => {
-             btnScan.disabled = false;
-             btnScan.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+
+        scanWs.onerror = (e) => {
+            if (handled) return;
+            handled = true;
+            clearTimeout(timeout);
+            btnScan.disabled = false;
+            btnScan.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+            deviceListDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9em; text-align: center;">Server connection failed.</p>';
         };
     }
-    
+
     function selectDevice(id) {
         deviceIdInput.value = id;
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -510,7 +658,6 @@
 
     window.onload = () => {
         scanDevices();
-        // Auto refresh list every 30 seconds
         setInterval(scanDevices, 30000);
     };
 
@@ -520,11 +667,6 @@
             alert("Please enter a Device ID");
             return;
         }
-        
-        // Validate ID exists (Optional: can be skipped if user wants to force connect)
-        // We'll do a quick check via a temp socket or trust the user if they typed it manually?
-        // User asked: "if click wrong id.. it still connect.. fix it"
-        // So we MUST validate.
         
         log("Validating Device ID...");
         btnConnect.disabled = true;
@@ -537,163 +679,183 @@
                 if (msg.type === 'device_list') {
                     const exists = msg.devices.find(d => d.id === id);
                     valWs.close();
-                    
                     if (exists) {
-                        if (!exists.online) {
-                             if(!confirm(`Device "${exists.name}" is currently OFFLINE. Connect anyway?`)) {
-                                 btnConnect.disabled = false;
-                                 return;
-                             }
-                        }
                         startConnection(id);
                     } else {
-                        alert("Device ID not found in server records.");
-                        log("Error: Invalid Device ID");
+                        alert("Device ID not found on server.");
+                        log("Error: Device ID missing.");
                         btnConnect.disabled = false;
                     }
                 }
             } catch(err) {
                 valWs.close();
-                startConnection(id); // Fallback on error
+                startConnection(id);
             }
         };
         valWs.onerror = () => {
-             valWs.close();
-             startConnection(id); // Fallback
+            valWs.close();
+            startConnection(id);
         };
     }
 
     function startConnection(id) {
         deviceId = id;
-        log("Connecting to Relay Server...");
-        
+        log("Connecting to relay pipeline...");
         ws = new WebSocket(RELAY_SERVER_URL);
-        ws.binaryType = 'arraybuffer'; 
 
         ws.onopen = () => {
-            log("Connected to Server.");
+            log("Connected to relay server!");
+            ws.send(JSON.stringify({ type: 'register_viewer', targetDeviceId: deviceId }));
             isConnected = true;
-            updateUI(true); // Show controls IMMEDIATELY
+            updateUI(true);
             
-            // Register as viewer
-            const registerMsg = {
-                type: 'register_viewer',
-                deviceId: deviceId
-            };
-            ws.send(JSON.stringify(registerMsg));
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            nextStartTime = audioCtx.currentTime;
             
-            // Start Heartbeat
-            heartbeatInterval = setInterval(() => {
-                if (isConnected) sendCommand('ping');
-            }, 3000);
-            
-            // Init Audio
-            try {
-                if (!audioCtx) {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    audioCtx = new AudioContext();
-                }
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-            } catch(e) {
-                console.warn("Audio init failed", e);
+            sendCommand('get_status');
+        };
+
+        ws.onmessage = (e) => {
+            if (typeof e.data === 'string') {
+                handleJsonData(e.data);
+            } else {
+                handleBinaryData(e.data);
             }
         };
 
-        ws.onmessage = (event) => {
-            const data = event.data;
-            
-            if (typeof data === 'string') {
-                handleJsonData(data);
-            } else if (data instanceof ArrayBuffer || data instanceof Blob) {
-                handleBinaryData(data);
-            }
-        };
-
-        ws.onclose = (e) => {
-            log(`Disconnected (Code: ${e.code})`);
+        ws.onclose = () => {
+            log("Disconnected from server.");
             isConnected = false;
-            clearInterval(heartbeatInterval);
             updateUI(false);
             isMonitoring = false;
+            isAudioOn = false;
             updateControlButtons();
         };
 
         ws.onerror = (e) => {
-            log("Connection Error");
-            console.error(e);
-            clearInterval(heartbeatInterval);
+            log("Connection error encountered.");
         };
     }
 
     function disconnect() {
         if (isConnected) {
-            // Try to send stop command before closing, just in case
             if (isMonitoring) stopMonitoring();
             if (isAudioOn) sendCommand('audioOff');
         }
-        
         if (ws) ws.close();
-        clearInterval(heartbeatInterval);
-        
-        // Reset local state immediately
         isMonitoring = false;
         isAudioOn = false;
         updateControlButtons();
     }
 
     function updateUI(connected) {
-        btnConnect.style.display = connected ? 'none' : 'flex';
-        btnDisconnect.style.display = connected ? 'flex' : 'none';
+        btnConnect.style.display = connected ? 'none' : 'inline-flex';
+        btnDisconnect.style.display = connected ? 'inline-flex' : 'none';
         btnDisconnect.disabled = !connected;
         deviceIdInput.disabled = connected;
-        if (connected) {
-            controlsDiv.style.display = 'block'; 
-        } else {
-            controlsDiv.style.display = 'none';
-        }
+        controlsDiv.style.display = connected ? 'block' : 'none';
     }
 
     function handleJsonData(jsonString) {
         try {
             const msg = JSON.parse(jsonString);
-            console.log("RX:", msg);
             
             if (msg.type === 'status') {
-                if (msg.message === 'camera_online') {
-                    log("Server: Camera reported ONLINE.");
-                } else if (msg.message === 'camera_offline') {
-                    log("Server: Camera reported OFFLINE (Commands may not work).");
-                } else {
-                    log(`Server: ${msg.message}`);
-                    if (msg.message === 'Monitoring started') { isMonitoring = true; updateControlButtons(); }
-                    if (msg.message === 'Monitoring stopped') { isMonitoring = false; updateControlButtons(); }
-                    if (msg.message === 'Audio started') { isAudioOn = true; updateControlButtons(); }
-                    if (msg.message === 'Audio stopped') { isAudioOn = false; updateControlButtons(); }
-                }
+                log(`Device: ${msg.message}`);
+                if (msg.message === 'Monitoring started') { isMonitoring = true; updateControlButtons(); }
+                if (msg.message === 'Monitoring stopped') { isMonitoring = false; updateControlButtons(); }
+                if (msg.message === 'Audio started') { isAudioOn = true; updateControlButtons(); }
+                if (msg.message === 'Audio stopped') { isAudioOn = false; updateControlButtons(); }
             }
             else if (msg.type === 'contacts_list') {
-                // msg.data is { data: "[...]" }
-                const contacts = JSON.parse(msg.data.data);
+                const raw = msg.data ? (msg.data.data || msg.data) : [];
+                const contacts = typeof raw === 'string' ? JSON.parse(raw) : raw;
                 const list = document.getElementById('contactsList');
                 list.innerHTML = '';
-                if (contacts.length === 0) {
-                     list.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">No contacts found.</p>';
+                if (!contacts || contacts.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No contacts found.</p>';
                 } else {
                     contacts.forEach(c => {
-                        const div = document.createElement('div');
-                        div.className = 'contact-item';
-                        div.innerHTML = `<div class="contact-name">${c.name}</div><div class="contact-number">${c.phoneNumber}</div>`;
-                        list.appendChild(div);
+                        const card = document.createElement('div');
+                        card.className = 'data-card';
+                        card.innerHTML = `<div class="data-title"><i class="fas fa-user-circle" style="color:var(--primary);"></i> ${c.name}</div><div class="data-sub">${c.phoneNumber}</div>`;
+                        list.appendChild(card);
                     });
                 }
-                log(`Loaded ${contacts.length} contacts.`);
+                log(`Received ${contacts ? contacts.length : 0} contacts.`);
+            }
+            else if (msg.type === 'call_logs_list') {
+                const raw = msg.data ? (msg.data.data || msg.data) : [];
+                const logs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                const list = document.getElementById('callsList');
+                list.innerHTML = '';
+                if (!logs || logs.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No call history logs found.</p>';
+                } else {
+                    logs.forEach(c => {
+                        const card = document.createElement('div');
+                        card.className = 'data-card';
+                        const icon = c.type === 'Incoming' ? 'fa-phone-arrow-down-left text-success' : c.type === 'Outgoing' ? 'fa-phone-arrow-up-right text-primary' : 'fa-phone-slash text-danger';
+                        card.innerHTML = `
+                            <div class="data-title"><i class="fas ${icon}"></i> ${c.name} (${c.number})</div>
+                            <div class="data-sub">${c.type} • ${c.duration} • ${c.date}</div>
+                        `;
+                        list.appendChild(card);
+                    });
+                }
+                log(`Received ${logs ? logs.length : 0} call logs.`);
+            }
+            else if (msg.type === 'sms_list') {
+                const raw = msg.data ? (msg.data.data || msg.data) : [];
+                const smsList = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                const list = document.getElementById('smsList');
+                list.innerHTML = '';
+                if (!smsList || smsList.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No SMS records found.</p>';
+                } else {
+                    smsList.forEach(s => {
+                        const card = document.createElement('div');
+                        card.className = 'data-card';
+                        card.innerHTML = `
+                            <div class="data-title"><i class="fas fa-comment-dots" style="color:var(--accent-purple);"></i> [${s.type}] ${s.address}</div>
+                            <div style="color: #f1f5f9; font-size: 0.9em; margin: 6px 0;">${s.body}</div>
+                            <div class="data-sub">${s.date}</div>
+                        `;
+                        list.appendChild(card);
+                    });
+                }
+                log(`Received ${smsList ? smsList.length : 0} SMS logs.`);
+            }
+            else if (msg.type === 'live_sms') {
+                const list = document.getElementById('notificationsList');
+                const card = document.createElement('div');
+                card.className = 'data-card';
+                card.style.borderColor = 'var(--primary)';
+                card.innerHTML = `
+                    <div class="data-title"><i class="fas fa-comment-sms" style="color:var(--primary);"></i> LIVE SMS: ${msg.data.sender}</div>
+                    <div style="color:#ffffff; font-weight:600; margin:6px 0;">${msg.data.body}</div>
+                    <div class="data-sub">${msg.data.timestamp}</div>
+                `;
+                list.prepend(card);
+                log(`LIVE SMS from ${msg.data.sender}`);
+            }
+            else if (msg.type === 'live_notification') {
+                const list = document.getElementById('notificationsList');
+                const card = document.createElement('div');
+                card.className = 'data-card';
+                card.style.borderColor = 'var(--accent-purple)';
+                card.innerHTML = `
+                    <div class="data-title"><i class="fas fa-bell" style="color:var(--accent-purple);"></i> ${msg.data.appName} (${msg.data.packageName})</div>
+                    <div style="color:#ffffff; font-weight:600; margin:4px 0;">${msg.data.title}</div>
+                    <div style="color:#cbd5e1; font-size:0.9em;">${msg.data.text}</div>
+                    <div class="data-sub">${msg.data.timestamp}</div>
+                `;
+                list.prepend(card);
+                log(`LIVE Notification: ${msg.data.appName}`);
             }
             else if (msg.type === 'gallery_list') {
                 const images = JSON.parse(msg.data.data);
                 const returnedOffset = parseInt(msg.data.offset) || 0;
-                
                 const grid = document.getElementById('galleryGrid');
                 grid.innerHTML = '';
                 
@@ -703,26 +865,22 @@
                 document.getElementById('btnNextPage').disabled = (images.length < 50);
 
                 if (images.length === 0) {
-                     grid.innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">No images found (or end of list).</p>';
+                    grid.innerHTML = '<p style="text-align:center; color:var(--text-muted); grid-column: 1/-1; padding: 20px;">No images found.</p>';
                 } else {
                     images.forEach(img => {
-                        const div = document.createElement('div');
-                        div.className = 'gallery-item';
-                        div.onclick = () => requestImage(img.id);
+                        const card = document.createElement('div');
+                        card.className = 'gallery-card';
+                        card.onclick = () => requestImage(img.id);
                         const dateStr = new Date(img.date * 1000).toLocaleDateString();
                         
-                        // Initial Placeholder with Spinner-like icon
-                        const thumbHtml = `<div id="thumb-${img.id}" class="gallery-thumb"><i class="fas fa-spinner fa-spin"></i></div>`;
-                        
-                        div.innerHTML = `
-                            ${thumbHtml}
-                            <div class="gallery-name">${img.name}</div>
-                            <div style="font-size:0.7em; color:#666;">${dateStr}</div>
+                        card.innerHTML = `
+                            <div id="thumb-${img.id}" class="gallery-thumb-wrapper"><i class="fas fa-spinner fa-spin"></i></div>
+                            <div style="font-size: 0.8em; padding: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${img.name}</div>
                         `;
-                        grid.appendChild(div);
+                        grid.appendChild(card);
                     });
                 }
-                log(`Loaded list (Page ${pageNum}). Loading thumbs...`);
+                log(`Loaded Gallery Page ${pageNum}. Streaming thumbnails...`);
             }
             else if (msg.type === 'thumbnail_update') {
                 const id = msg.data.id;
@@ -730,19 +888,15 @@
                 const thumbDiv = document.getElementById('thumb-' + id);
                 if (thumbDiv) {
                     thumbDiv.innerHTML = `<img src="data:image/jpeg;base64,${base64}" style="width:100%; height:100%; object-fit:cover;">`;
-                    thumbDiv.classList.remove('loading');
                 }
             }
             else if (msg.type === 'gallery_image') {
-                const id = msg.data.id;
                 const base64 = msg.data.data;
-                const imgSrc = "data:image/jpeg;base64," + base64;
-                
                 const modal = document.getElementById('imageModal');
                 if (modal.style.display === 'flex') {
                     document.getElementById('imgSpinner').style.display = 'none';
                     const img = document.getElementById('fullImage');
-                    img.src = imgSrc;
+                    img.src = "data:image/jpeg;base64," + base64;
                     img.style.display = 'block';
                 }
             }
@@ -752,162 +906,49 @@
     }
 
     function switchTab(tab) {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-' + tab).classList.add('active');
         
         document.getElementById('monitorView').style.display = 'none';
         document.getElementById('contactsView').style.display = 'none';
+        document.getElementById('callsView').style.display = 'none';
+        document.getElementById('smsView').style.display = 'none';
+        document.getElementById('notificationsView').style.display = 'none';
         document.getElementById('galleryView').style.display = 'none';
         
         document.getElementById(tab + 'View').style.display = 'block';
+
+        if (tab === 'contacts') loadContacts();
+        if (tab === 'calls') loadCallLogs();
+        if (tab === 'sms') loadSmsLogs();
+        if (tab === 'gallery') loadGallery();
+    }
+
+    function loadCallLogs() {
+        document.getElementById('callsList').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px;">Fetching call records...</p>';
+        sendCommand('get_call_logs');
+    }
+
+    function loadSmsLogs() {
+        document.getElementById('smsList').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px;">Fetching SMS history...</p>';
+        sendCommand('get_sms_logs');
     }
 
     function loadContacts() {
-        document.getElementById('contactsList').innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">Loading...</p>';
+        document.getElementById('contactsList').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px;">Fetching contact list...</p>';
         sendCommand('get_contacts');
     }
 
     function loadGallery() {
-        document.getElementById('galleryGrid').innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">Loading...</p>';
-        sendCommand('get_gallery');
+        galleryOffset = 0;
+        fetchGallery();
     }
 
-    function requestImage(id) {
-        document.getElementById('imageModal').style.display = 'flex';
-        document.getElementById('fullImage').src = ''; 
-        document.getElementById('fullImage').style.display = 'none';
-        document.getElementById('imgSpinner').style.display = 'inline-block';
-        
-        sendCommand('get_image', { id: id.toString() });
-    }
-
-    function closeModal() {
-        document.getElementById('imageModal').style.display = 'none';
-    }
-
-
-    function handleBinaryData(data) {
-        if (data instanceof Blob) {
-             const reader = new FileReader();
-             reader.onload = function() { processArrayBuffer(this.result); };
-             reader.readAsArrayBuffer(data);
-        } else {
-             processArrayBuffer(data);
-        }
-    }
-
-    function processArrayBuffer(buffer) {
-        try {
-            const bytes = new Uint8Array(buffer);
-            // Basic JPEG check: SOI (FF D8)
-            if (bytes.length > 1000 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
-                frameCount++;
-                if (frameCount % 100 === 0) console.log(`Rx Video Frame #${frameCount} (${bytes.length} bytes)`);
-                
-                const blob = new Blob([buffer], { type: 'image/jpeg' });
-                const url = URL.createObjectURL(blob);
-                videoFeed.onload = () => URL.revokeObjectURL(url);
-                videoFeed.src = url;
-            } else {
-                playAudioChunk(buffer);
-            }
-        } catch (e) {
-            console.warn("Binary processing failed, attempting text decode:", e);
-            try {
-                const text = new TextDecoder("utf-8").decode(buffer);
-                if (text.trim().startsWith('{')) {
-                    handleJsonData(text);
-                }
-            } catch (err) {
-                console.error("Recovery failed", err);
-            }
-        }
-    }
-
-    function sendCommand(type, data = {}) {
-        if (!ws || !isConnected) return;
-        const cmd = {
-            type: 'command',
-            data: {
-                type: type,
-                data: JSON.stringify(data)
-            }
-        };
-        ws.send(JSON.stringify(cmd));
-        log(`Sent command: ${type}`);
-    }
-    
-    function startMonitoring() {
-        sendCommand('startMonitoring');
-        isMonitoring = true;
-        updateControlButtons();
-    }
-
-    function stopMonitoring() {
-        sendCommand('stopMonitoring');
-        isMonitoring = false;
-        // Also stop audio if monitoring stops
-        if (isAudioOn) {
-            isAudioOn = false;
-            sendCommand('audioOff');
-        }
-        updateControlButtons();
-    }
-
-    function toggleAudio() {
-        if (isAudioOn) {
-            sendCommand('audioOff');
-            isAudioOn = false;
-            log("Audio OFF command sent");
-        } else {
-            sendCommand('audioOn');
-            isAudioOn = true;
-            log("Audio ON command sent");
-        }
-        updateControlButtons();
-    }
-    
-    function updateControlButtons() {
-        if (isMonitoring) {
-            btnStartMonitor.style.display = 'none';
-            btnStopMonitor.style.display = 'block';
-            videoFeed.style.display = 'block';
-        } else {
-            btnStartMonitor.style.display = 'block';
-            btnStopMonitor.style.display = 'none';
-            videoFeed.style.display = 'none';
-            videoFeed.src = "";
-        }
-        
-        if (isAudioOn) {
-            btnAudio.innerHTML = '<i class="fas fa-microphone-slash"></i> Stop Audio';
-            btnAudio.classList.remove('disconnect'); 
-            btnAudio.classList.add('disconnect'); // Make it red
-        } else {
-            btnAudio.innerHTML = '<i class="fas fa-microphone"></i> Start Audio';
-            btnAudio.classList.remove('disconnect');
-        }
-    }
-
-    let currentCameraFacing = 'back';
     let galleryOffset = 0;
     const GALLERY_LIMIT = 50;
 
-    function toggleCamera() {
-        currentCameraFacing = (currentCameraFacing === 'back') ? 'front' : 'back';
-        sendCommand('switchCamera', { facing: currentCameraFacing });
-        log(`Switching to ${currentCameraFacing} camera...`);
-    }
-    
-    // --- Gallery Pagination ---
-
-    function loadGallery() {
-        galleryOffset = 0; // Reset to start
-        fetchGallery();
-    }
-    
     function fetchGallery() {
-        document.getElementById('galleryGrid').innerHTML = '<p style="text-align:center; color:#666; grid-column: 1/-1; padding: 20px;">Loading...</p>';
+        document.getElementById('galleryGrid').innerHTML = '<p style="text-align:center; color:var(--text-muted); grid-column: 1/-1; padding: 20px;">Fetching gallery grid...</p>';
         document.getElementById('btnPrevPage').disabled = true;
         document.getElementById('btnNextPage').disabled = true;
         
@@ -928,7 +969,112 @@
         fetchGallery();
     }
 
-    // --- End Pagination ---
+    function requestImage(id) {
+        document.getElementById('imageModal').style.display = 'flex';
+        document.getElementById('fullImage').src = ''; 
+        document.getElementById('fullImage').style.display = 'none';
+        document.getElementById('imgSpinner').style.display = 'inline-block';
+        sendCommand('get_image', { id: id.toString() });
+    }
+
+    function closeModal() {
+        document.getElementById('imageModal').style.display = 'none';
+    }
+
+    function handleBinaryData(data) {
+        if (data instanceof Blob) {
+            const reader = new FileReader();
+            reader.onload = function() { processArrayBuffer(this.result); };
+            reader.readAsArrayBuffer(data);
+        } else {
+            processArrayBuffer(data);
+        }
+    }
+
+    function processArrayBuffer(buffer) {
+        try {
+            const bytes = new Uint8Array(buffer);
+            if (bytes.length > 1000 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
+                frameCount++;
+                const blob = new Blob([buffer], { type: 'image/jpeg' });
+                const url = URL.createObjectURL(blob);
+                videoFeed.onload = () => URL.revokeObjectURL(url);
+                videoFeed.src = url;
+            } else {
+                playAudioChunk(buffer);
+            }
+        } catch (e) {
+            console.warn("Binary processing error", e);
+        }
+    }
+
+    function sendCommand(type, data = {}) {
+        if (!ws || !isConnected) return;
+        const cmd = {
+            type: 'command',
+            data: {
+                type: type,
+                data: JSON.stringify(data)
+            }
+        };
+        ws.send(JSON.stringify(cmd));
+        log(`Sent command: ${type}`);
+    }
+
+    function startMonitoring() {
+        sendCommand('startMonitoring');
+        isMonitoring = true;
+        updateControlButtons();
+    }
+
+    function stopMonitoring() {
+        sendCommand('stopMonitoring');
+        isMonitoring = false;
+        if (isAudioOn) {
+            isAudioOn = false;
+            sendCommand('audioOff');
+        }
+        updateControlButtons();
+    }
+
+    function toggleAudio() {
+        if (isAudioOn) {
+            sendCommand('audioOff');
+            isAudioOn = false;
+        } else {
+            sendCommand('audioOn');
+            isAudioOn = true;
+        }
+        updateControlButtons();
+    }
+
+    function updateControlButtons() {
+        if (isMonitoring) {
+            btnStartMonitor.style.display = 'none';
+            btnStopMonitor.style.display = 'inline-flex';
+            videoFeed.style.display = 'block';
+        } else {
+            btnStartMonitor.style.display = 'inline-flex';
+            btnStopMonitor.style.display = 'none';
+            videoFeed.style.display = 'none';
+            videoFeed.src = "";
+        }
+        
+        if (isAudioOn) {
+            btnAudio.innerHTML = '<i class="fas fa-microphone-slash"></i> Stop Audio';
+            btnAudio.classList.add('btn-red');
+        } else {
+            btnAudio.innerHTML = '<i class="fas fa-microphone"></i> Start Audio';
+            btnAudio.classList.remove('btn-red');
+        }
+    }
+
+    let currentCameraFacing = 'back';
+    function toggleCamera() {
+        currentCameraFacing = (currentCameraFacing === 'back') ? 'front' : 'back';
+        sendCommand('switchCamera', { facing: currentCameraFacing });
+        log(`Switching to ${currentCameraFacing} camera...`);
+    }
 
     function playAudioChunk(arrayBuffer) {
         if (!audioCtx) return;
@@ -937,51 +1083,19 @@
         for (let i = 0; i < int16Data.length; i++) {
             float32Data[i] = int16Data[i] / 32768.0;
         }
-        // Match Android Sample Rate (16000 Hz)
         const buffer = audioCtx.createBuffer(1, float32Data.length, 16000); 
         buffer.getChannelData(0).set(float32Data);
         
         const currentTime = audioCtx.currentTime;
-        
-        // --- Low Latency Logic ---
-        
-        // 1. Clean up finished nodes
-        // (Actual cleanup happens via onended below)
-        
-        // 2. Underrun: System ran dry. Reset.
-        if (nextStartTime < currentTime) {
-            nextStartTime = currentTime;
-        }
-        
-        // 3. Overrun/Drift: We are too far behind real-time (> 500ms)
-        if (nextStartTime > currentTime + 0.5) {
-            // console.log("Audio Latency High: Resyncing...");
-            // Stop all currently scheduled/playing nodes to flush the queue
-            audioQueue.forEach(node => {
-                try { node.stop(); } catch(e) {}
-            });
-            audioQueue = [];
-            
-            // Jump to now
-            nextStartTime = currentTime;
-        }
+        if (nextStartTime < currentTime) nextStartTime = currentTime;
+        if (nextStartTime > currentTime + 0.5) nextStartTime = currentTime + 0.1;
         
         const source = audioCtx.createBufferSource();
         source.buffer = buffer;
         source.connect(audioCtx.destination);
         source.start(nextStartTime);
-        
-        // Add to queue for potential cancellation
-        audioQueue.push(source);
-        // Remove from queue when done (optional optimization to keep array small)
-        source.onended = () => {
-             const index = audioQueue.indexOf(source);
-             if (index > -1) audioQueue.splice(index, 1);
-        };
-        
         nextStartTime += buffer.duration;
     }
 </script>
-
 </body>
 </html>
