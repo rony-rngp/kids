@@ -281,17 +281,36 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestAutoStartPermission() {
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
-        try {
-            val intent = Intent()
-            val manufacturer = android.os.Build.MANUFACTURER
-            if ("xiaomi".equals(manufacturer, true)) intent.component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
-            else if ("oppo".equals(manufacturer, true)) intent.component = ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")
-            else if ("vivo".equals(manufacturer, true)) intent.component = ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
-            
-            if (intent.resolveActivity(packageManager) != null) autoStartPermissionLauncher.launch(intent)
-            else sharedPrefs.edit().putBoolean("auto_start_enabled", true).apply()
-        } catch (e: Exception) {}
-        sharedPrefs.edit().putBoolean("first_launch", false).apply()
+        val oppoIntents = arrayOf(
+            Intent().setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")),
+            Intent().setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.fake.StartupAppListActivity")),
+            Intent().setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startupapp.StartupAppListActivity")),
+            Intent().setComponent(ComponentName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity")),
+            Intent().setComponent(ComponentName("com.coloros.oppoguardelf", "com.coloros.powermanager.fuelgauge.PowerUsageModelActivity")),
+            Intent().setComponent(ComponentName("com.coloros.oppoguardelf", "com.coloros.powermanager.fuelgauge.PowerSaverModeActivity"))
+        )
+
+        var launched = false
+        for (intent in oppoIntents) {
+            try {
+                if (intent.resolveActivity(packageManager) != null) {
+                    autoStartPermissionLauncher.launch(intent)
+                    launched = true
+                    break
+                }
+            } catch (e: Exception) {}
+        }
+
+        if (!launched) {
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                startActivity(intent)
+                Toast.makeText(this, "Please enable 'Allow Auto Startup' & 'Allow Background Activity' in Settings", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {}
+        }
+        sharedPrefs.edit().putBoolean("auto_start_enabled", true).apply()
     }
 
     private fun isFirstLaunch() = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE).getBoolean("first_launch", true)
