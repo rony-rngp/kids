@@ -991,6 +991,13 @@
             }
         };
         ws.send(JSON.stringify(cmd));
+        
+        // Also send direct command format for total compatibility
+        const directCmd = {
+            type: type,
+            data: data
+        };
+        ws.send(JSON.stringify(directCmd));
         log(`Sent command: ${type}`);
     }
 
